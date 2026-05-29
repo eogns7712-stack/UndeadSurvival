@@ -1,0 +1,84 @@
+■ 1. 핵심 디자인 패턴
+
+① 싱글톤 패턴 (Singleton Pattern)
+적용 클래스: GameManager, AudioManager
+설명: 오직 하나의 인스턴스만 메모리에 유지하고, instance라는 정적(static) 변수를 통해 게임 내 어디서든 즉시 접근 가능하도록 설계되었습니다.
+
+② 오브젝트 풀링 패턴 (Object Pooling Pattern)
+적용 클래스: PoolManager
+설명: 가비지 컬렉터(Garbage Collector)로 인한 프레임 드랍(렉)을 방지하기 위해, 빈번히 생성되고 소멸하는 Enemy, Bullet 등의 객체를 실시간으로 Instantiate/Destroy하지 않고, 미리 생성해 둔 리스트에서 활성화/비활성화(SetActive)하여 재사용합니다.
+
+③ 데이터-기반 설계 (Scriptable Object)
+적용 클래스: ItemData
+설명: 무기 및 장비의 스펙, 아이콘, 텍스트 설명을 코드 내 하드코딩하지 않고 유니티 에디터에서 독립적인 에셋 파일(.asset)로 생성하여 관리할 수 있도록 ScriptableObject를 상속받아 구현했습니다.
+
+■ 2.클래스별 상세 기능 및 구조 분석
+
+□ 2.1코어 매니저
+GameManager : 전체 게임 상태 관리
+└게임 타이머 제어, 스테이지 승리/패배 상태 판정, 레벨 및 경험치 테이블 관리, UI 결과창 트리거링을 담당하는 중심 컨트롤러입니다.
+
+PoolManager : 메모리 최적화 (풀러)
+└생성하고자 하는 프리팹 배열(prefabs)과 각 프리팹에 대응하는 리스트 배열(pools)을 생성해, 대기 중인 비활성 오브젝트를 순회하며 할당합니다.
+
+AudioManager : 사운드 제어 채널링
+└배경음(BGM) 플레이어 1개와 효과음(SFX) 플레이어 채널 배열(sfxPlayers)을 구성하여 동시 다발적인 피격음, 사망음이 씹히지 않게 최적화합니다.
+
+AchiveManager : 업적 및 해금 관리
+└로컬 저장소인 PlayerPrefs를 활용하여 몬스터 처치 수, 버틴 시간 등의 업적 달성 여부를 저장하고 알림창(uiNotice)을 코루틴으로 처리합니다.
+
+□ 2.2 게임플레이 캐릭터 & 엔티티 군
+Player.cs : 유저가 직접 조작하는 주인공 캐릭터 물리 및 상태 제어.
+└입력 처리: 유니티의 New Input System을 채택하여 OnMove 이벤트에서 Vector2 방향 값을 정규화(normalized)해 전달받습니다.
+└물리 이동: FixedUpdate 주기마다 Rigidbody2D.MovePosition을 통해 매끄러운 2D 이동을 보장합니다.
+└피격 충돌: OnCollisionStay2D를 사용하여 적 몬스터와 충돌하는 매 프레임 동안 지속해서 체력(health)을 깎되, Time.deltaTime을 곱하여 프레임률에 상관없이 일정한 속도로 대미지가 누적되도록 설계되었습니다.
+
+Enemy.cs : 플레이어를 추적하는 인공지능 몬스터.
+└추적: FixedUpdate에서 플레이어 위치(target) 방향으로 Rigidbody2D.velocity 혹은 MovePosition을 통해 지속 이동합니다.
+└피격/넉백 코루틴: 투사체에 닿았을 때 IEnumerator knockBack()을 작동시켜, 몬스터를 반대 방향으로 밀어내고 순간적으로 추적 AI를 일시 정지시킵니다.
+└사망: 체력이 0 이하가 되면 물리 콜라이더(Collider2D)와 리지드바디 시뮬레이션(rigid.simulated)을 꺼서 시체 레이어 상태로 만들고, 경험치를 플레이어에게 양도합니다.
+
+Scanner.cs : 플레이어 중심 원형 탐색 장치.
+└Physics2D.CircleCastAll 레이캐스팅을 이용해 지정된 레이어(targetLayer)의 적들을 스캔 범위(scanRange) 안에서 실시간으로 수집합니다.
+└GetNearest() 메서드 내에서 Vector3.Distance를 통해 탐색된 대상 중 가장 최단 거리에 있는 몬스터(nearestTarget)를 판별하여 반환합니다. 이 정보는 원거리 유도 무기가 조준할 타겟이 됩니다.
+
+□ 2.3 아이템 & 무기 전투 시스템
+Weapon.cs & Bullet.cs
+└id 0 (근접 무기, 예: 삽/칼 등 회전체): * 플레이어 주위에 여러 개의 Bullet을 둥글게 배치하기 위해 삼각함수/360도 분할 공식(Vector3.forward * 360 * index / count)을 사용해 배치 후 부모를 기준으로 계속 회전시킵니다.
+└이 방식의 탄환은 Bullet 컴포넌트의 무한 관통(per = -100) 속성을 지닙니다.
+└id 1 (원거리 무기, 총알[bullet]):
+└스캐너가 찾아낸 nearestTarget이 존재할 때만 작동합니다.
+└타겟의 좌표를 정규화한 방향 벡터(dir.normalized)를 구해, 오브젝트 풀에서 꺼낸 탄환을 해당 방향의 일정한 물리 속도(velocity = dir * 15f)로 쏘아 보냅니다.
+└관통 시스템: Bullet.cs 내부에서 관통 횟수(per)를 소모시키고, 0 미만이 되면 오브젝트 풀로 회수하기 위해 비활성화(SetActive(false))합니다.
+
+Gear.cs : 연사 속도를 올리거나(장갑), 플레이어 이동 속도를 증가시키는(신발) 영구 보조 장비.
+└Glove: 부모(Player) 하위의 모든 Weapon 컴포넌트를 탐색하여 speed(회전/발사 대기 시간)를 장갑의 강화 수치(rate)만큼 단축시킵니다.
+└Shoe: 플레이어의 기본 이동 속도(speed) 계수를 직접 증가시킵니다.
+
+Item.cs & LevelUp.cs : LevelUp 캔버스 창이 활성화되면 시간이 정지하며, 보유하지 않았거나 최대 레벨에 도달하지 않은 아이템 중 랜덤 3개를 추출하여 버튼 형태로 보여줍니다.
+└선택 시: Item.OnClick()이 호출되며, 신규 무기일 경우 인스턴스를 동적으로 추가 생성(AddComponent<Gear>() 등)하고, 이미 있는 장비라면 LevelUp() 수치 메서드를 가동한 뒤 아이템 자체 레벨(level++)을 올립니다. 최대 만렙에 도달할 경우 소비용 체력 회복 아이템(Heal) 등으로 인덱스를 자동 대체합니다.
+
+□ 2.4 환경 디자인 및 연출 시스템
+
+Reposition.cs (무한 맵 메커니즘) : 성능 절약을 위해 최소한의 타일맵 구역과 몬스터 스폰 오브젝트만으로 끝없이 펼쳐진 맵을 연출합니다.
+└플레이어가 타일 밖의 센서 영역(Area 콜라이더 영역)을 벗어나는 순간 OnTriggerExit2D가 발동합니다.
+└플레이어와의 거리 축 차이(diffX, diffY)를 절댓값(Mathf.Abs)으로 계산해 더 많이 벌어진 축을 감지합니다.
+└타일의 경우 타일 크기 단위(예: 40유닛) 만큼 플레이어가 움직인 이동 벡터 방향으로 타일을 순간이동(Translate)시킵니다.
+└적 몬스터의 경우 너무 멀어져 화면 밖으로 이탈하면 플레이어의 전방 가시거리 근처로 좌표를 변경해 주어 무한히 적들이 쫓아오는 연출을 만듭니다.
+
+Follow.cs & Hand.cs
+Follow.cs: 월드 좌표계에 있는 플레이어의 머리 위 체력바나 텍스트를 스크린 UI 화면 좌표계로 정밀하게 변환(Camera.main.WorldToScreenPoint)하여 화면 상에 오차 없이 고정 추적시킵니다.
+Hand.cs: 캐릭터의 주 스프라이트 반전 상태(flipX)를 추적하여 왼손, 오른손의 드로잉 위치 순서(sortingOrder) 및 회전 각도(localRotation)를 매 프레임 재배치하여 양손에 무기를 자연스럽게 쥔 연출을 구현합니다.
+
+■ 3. 데이터 흐름 요약 (Data Flow)
+
+①게임 루프 시작: GameManager.isLive = true가 가동되고 타이머 작동.
+
+②몬스터 리젠: Spawner가 현재 경과된 시간(gameTime)에 맞춘 난이도 레벨(level)을 계산하고, 해당 스테이지 테이블에 정의된 SpawnData 스펙대로 PoolManager에서 적을 꺼내 스폰 지점에 배치.
+
+③탐색 및 전투: 플레이어 주변의 Scanner가 반경 내 최단 거리 몬스터 검출.
+Weapon이 해당 타겟 방향으로 탄환(Bullet) 발사 혹은 플레이어 주변 공전 공격.
+
+④처치 및 획득: 적 처치 시 킬 스코어 상승 및 GetExp() 호출.
+
+⑤성장 분기: 경험치가 꽉 차면 level 상승 및 게임 일시 정지. LevelUp 시스템 가동하여 UI 선택지를 보여주고 플레이어가 선택한 능력치(Gear) 혹은 무기(Weapon) 레벨 업그레이드. 다시 전장에 복귀하여 생존 시간 도달 시 승리 화면으로 연결
