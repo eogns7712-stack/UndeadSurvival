@@ -88,6 +88,7 @@ public class LevelUp : MonoBehaviour
             Hide();
     }
 
+    // [버그 수정] 카드 개수가 가끔 3개 미만으로 나타나던 정렬 및 중복 대체 연산 오작동 해결
     void Next() // 레벨업 선택창에서 아이템 3개를 랜덤으로 보여주는 함수
     {
         // 1. 모든 아이템 비활성화
@@ -95,43 +96,77 @@ public class LevelUp : MonoBehaviour
         {
             item.gameObject.SetActive(false);
         }
-        // 2. 그 중에서 중복 없이 랜덤 3개 아이템 인덱스 리스트 추출
+
+        // 2. 가용 후보 인덱스 리스트 추출 (Heal 카드는 중복 보정용이므로 후보군에서 일단 배제)
         List<int> validIndices = new List<int>();
-        for (int i = 0; i < items.Length; i++)
+        for (int i = 0; i < items.Length - 1; i++)
         {
-            // 무기 및 아이템을 필터링하여 리스트에 등록 (Type.id 등으로 추가적인 해금 필터링 조건 기입 가능)
             validIndices.Add(i);
         }
 
-        int activeCount = 0;
-        while (activeCount < 3 && validIndices.Count > 0)
+        // 3. 중복 없이 랜덤 3개 인덱스 추출
+        List<int> selectedList = new List<int>();
+        int targetCount = Mathf.Min(3, validIndices.Count);
+
+        while (selectedList.Count < targetCount && validIndices.Count > 0)
         {
             int randPos = Random.Range(0, validIndices.Count);
             int selectedItemIdx = validIndices[randPos];
-            currentChoices[activeCount] = selectedItemIdx;
             validIndices.RemoveAt(randPos);
-            activeCount++;
+            selectedList.Add(selectedItemIdx);
         }
 
-        // [완료] currentChoices 원본 정렬 추가!
-        // items 리스트는 GetComponentsInChildren으로 가져왔으므로 계층구조상 정렬(위에서 아래)되어 있습니다.
-        // 무작위로 뽑힌 인덱스들을 오름차순으로 한 번 묶어줌으로써, 화면에 실제로 배치되는 Visual 순서(1, 2, 3번)와
-        // 키보드 숫자 1, 2, 3 매핑을 언제나 완벽하게 일치시킵니다.
-        System.Array.Sort(currentChoices);
+        // 4. 만렙 도달 아이템의 중복 없는 정밀 대체 처리
+        bool hasHealBeenAdded = false;
 
-        for (int index = 0; index < activeCount; index++)
+        for (int i = 0; i < selectedList.Count; i++)
         {
-            Item ranItem = items[currentChoices[index]];
+            Item ranItem = items[selectedList[i]];
 
-            // 3. 만렙 도달 아이템의 대체 여부를 설정
-            // [초월 추가] 만약 한계 도달 무기의 등장을 제한하는 대신 60% 확률로 초월(한계강화) 카드를 띄우고, 40% 확률로만 소비용 물약(Heal)으로 전환되게 분기 처리하여 게임 플레이 경험을 확장시켰습니다.
-            if (ranItem.level >= ranItem.data.damages.Length && Random.value < 0.4f)
+            // 만렙 도달 장비/아이템의 럭키 소비 힐템 대체 분기
+            if (ranItem.level >= ranItem.data.damages.Length)
             {
-                currentChoices[index] = items.Length - 1; // items의 맨 마지막에 위치한 Heal 아이템으로 대체 연동
-                ranItem = items[currentChoices[index]];
-            }
+                // 패시브 기어(초월 성장이 미설계된 장비)이거나, 40% 확률로 힐팩 대체가 활성화되었을 때
+                bool isPassiveGear = (ranItem.data.itemType == ItemData.ItemType.Glove || ranItem.data.itemType == ItemData.ItemType.Shoe);
+                bool shouldReplaceWithHeal = isPassiveGear || (Random.value < 0.4f);
 
-            ranItem.gameObject.SetActive(true);
+                if (shouldReplaceWithHeal)
+                {
+                    // [중요] Heal 카드가 중복하여 추가되지 않은 깨끗한 상태에서만 단 1회 대체 승인!
+                    if (!hasHealBeenAdded)
+                    {
+                        selectedList[i] = items.Length - 1; // items 리스트 맨 마지막 Heal 카드로 변경
+                        hasHealBeenAdded = true;
+                    }
+                    // 이미 Heal 카드가 출력되어 있는 상태라면, 카드 소실(동일 인스턴스 중첩)을 막기 위해 
+                    // 해당 만렙 장비의 무한 초월 성장 카드 형태를 그대로 노출하여 3장 슬롯을 수호합니다.
+                }
+            }
+        }
+
+        // 5. currentChoices 인덱스 안전 바인딩
+        for (int i = 0; i < selectedList.Count; i++)
+        {
+            currentChoices[i] = selectedList[i];
+        }
+
+        // 만약 예외적으로 카드가 부족해 가용 공간이 비었을 경우의 예외 방어막
+        for (int i = selectedList.Count; i < 3; i++)
+        {
+            currentChoices[i] = -1;
+        }
+
+        // 1, 2, 3 정렬 매치 일관성을 위해 오름차순으로 완벽 정렬
+        System.Array.Sort(currentChoices, 0, selectedList.Count);
+
+        // 6. UI 카드 게임오브젝트 동적 활성화
+        for (int index = 0; index < selectedList.Count; index++)
+        {
+            int itemIndex = currentChoices[index];
+            if (itemIndex >= 0 && itemIndex < items.Length)
+            {
+                items[itemIndex].gameObject.SetActive(true);
+            }
         }
     }
 }

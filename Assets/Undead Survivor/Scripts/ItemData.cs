@@ -30,7 +30,20 @@ public class ItemData : ScriptableObject
     // 유니티 인스펙터에서 이 배열에 이미지를 채워 넣습니다.
     // 예: 삽 데이터 파일의 경우 배열에 [0]: 갈퀴 이미지, [1]: 낫 이미지 를 순서대로 드래그앤드롭!
     // 예: 총 데이터 파일의 경우 배열에 [0]: 라이플 이미지, [1]: 샷건 이미지 를 순서대로 드래그앤드롭!
-    [Header("# Transcendence Evolutions")]
-    [Tooltip("초월 차수에 맞춰 진화할 스프라이트 이미지를 순서대로 넣어주세요.")]
+    [Header("# Transcendence Hand Evolutions")]
+    [Tooltip("초월 차수에 맞춰 손에 장착할 캐릭터 무기 스프라이트 이미지를 순서대로 넣어주세요.")]
     public Sprite[] customEvolutions; 
+
+    // [초월 원거리 탄환 전용 진화 배열]
+    [Header("# Transcendence Projectile Evolutions")]
+    [Tooltip("원거리 총의 경우, 초월 차수에 맞춰 발사될 총알(탄환) 스프라이트를 순서대로 넣어주세요.")]
+    public Sprite[] customProjectileEvolutions;
+
+    // [추가] 초월 단계별 전용 설명글 배열
+    // 예: Element 0 -> "갈퀴로 진화하여 전방 넓은 범위를 타격합니다." (M1용 설명)
+    // 예: Element 1 -> "최종 낫 단계로 진화하여 치명적인 회전 베기를 수행합니다." (M2용 설명)
+    [Header("# Transcendence Descriptions")]
+    [Tooltip("초월 단계별 전용 설명글을 순서대로 기입해 주세요.")]
+    [TextArea]
+    public string[] transcendenceDescs;
 }

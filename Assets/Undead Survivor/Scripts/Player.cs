@@ -19,6 +19,9 @@ public class Player : MonoBehaviour
     bool isInvincible = false; 
     public float invincibilityDuration = 0.5f; // 피격 후 무적 및 깜빡임 유지 시간
 
+    // [버그 방지 추가] 다량의 경험치 동시 수집 시 누락 및 유실을 원천 방지하는 경험치 버퍼 큐
+    public int pendingExp = 0;
+
     void Awake() // Start보다 우선 시작되는 함수 
     {   //변수 초기화
         rigid = GetComponent<Rigidbody2D>(); 
@@ -41,8 +44,15 @@ public class Player : MonoBehaviour
     //     inputVec.x = Input.GetAxisRaw("Horizontal"); // Input : Unity에서 받는 모든 입력을 관리하는 클래스, 좌우 방향키 입력감지 
     //     inputVec.y = Input.GetAxisRaw("Vertical"); // 상하 방향키 입력감지
     //     // GetAxis => 관성있음, GetAxisRaw => 관성없음
-
+    
+    // [버그 방지 추가] 대기열에 경험치( pendingExp )가 적체되어 있다면, 프레임마다 안전하게 게임매니저에 가산
+        if (pendingExp > 0)
+        {
+            pendingExp--;
+            GameManager.instance.GetExp();
+        }
     }
+
     void FixedUpdate()  //물리 연산 프레임마다 호출되는 생명주기 함수
     { 
 
@@ -77,7 +87,7 @@ public class Player : MonoBehaviour
             return;
         
         // [수정] 무적 상태가 아닐 때에만 체력을 깎고 무적 깜빡임 연출 코루틴을 가동
-        // [버그 수정 완료] 무적 프레임 깜빡임 상태에서도 "실제 체력 대미지는 지속적으로 깎이도록" 보완!
+        // [버그 수정 완료] 무적 프레임 깜빡임 상태에서도 "실제 체력 대미지는 지속적으로 깎이도록" 보완
         // 단, 피격 데미지가 과도하게 빠르게 닳는 것을 방지하기 위해 무적 상태일 땐 피격 딜량을 절반 수준으로 조정하거나 정상 가산시킵니다.
         if (collision.gameObject.CompareTag("Enemy"))
         {

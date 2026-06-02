@@ -129,3 +129,46 @@ public class Bullet : MonoBehaviour
         gameObject.SetActive(false);    // Player of Area 밖으로 총알이 나가면 오브젝트 비활성화
     }
 }
+
+// [추가] 폭탄 무기 폭발 시 시각적 만족감을 채워 줄 경량 파동 이펙트 컴포넌트
+public class TemporaryExplosionFX : MonoBehaviour
+{
+    private SpriteRenderer sr;
+    private float maxDuration = 0.22f; // 폭발이 커지고 사라지는 시간
+    private float elapsed = 0f;
+    private Vector3 maxScale;
+
+    public void PlayExplosion(Sprite bombSprite, float radius)
+    {
+        sr = gameObject.AddComponent<SpriteRenderer>();
+        sr.sprite = bombSprite;
+        sr.color = new Color(1f, 0.45f, 0.05f, 0.85f); // 뜨거운 화염의 오렌지-레드 광원 컬러
+        sr.sortingOrder = 5; // 적들보다 상위에 렌더링되도록 레이어 가산
+        
+        transform.localScale = Vector3.one * 0.1f;
+        // 폭발 반경에 비례하여 부풀어 오를 최종 스케일 지정
+        maxScale = Vector3.one * radius * 1.8f; 
+    }
+
+    void Update()
+    {
+        elapsed += Time.deltaTime;
+        float t = elapsed / maxDuration;
+
+        // 1. 크기가 급격하게 부풀어 올랐다가 멈춤
+        transform.localScale = Vector3.Lerp(Vector3.one * 0.1f, maxScale, Mathf.Sin(t * Mathf.PI * 0.5f));
+
+        // 2. 색상이 붉은색으로 변하면서 서서히 투명해짐
+        if (sr != null)
+        {
+            float alpha = Mathf.Lerp(0.85f, 0f, t);
+            sr.color = new Color(1f, Mathf.Lerp(0.45f, 0.15f, t), 0.05f, alpha);
+        }
+
+        // 3. 연출 시간이 끝나면 오브젝트 자동 파괴 및 메모리 정리
+        if (elapsed >= maxDuration)
+        {
+            Destroy(gameObject);
+        }
+    }
+}

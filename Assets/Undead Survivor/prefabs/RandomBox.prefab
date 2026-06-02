@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8753821261066406222}
   - component: {fileID: 8776484627118375437}
   - component: {fileID: 7448130952805616767}
+  - component: {fileID: -5808638737019342212}
   m_Layer: 0
   m_Name: RandomBox
   m_TagString: Untagged
@@ -166,3 +167,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   delayBeforeDisable: 2
+--- !u!114 &-5808638737019342212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4505770737344428111}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f6954d70baf69844aede42403b86a01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  type: 1
+  expValue: 1
+  magnetSpeed: 8
+  magnetDistance: 3.5
+  coinSprite: {fileID: -1997803578, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  healPackSprite: {fileID: 934571490, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  magnetSprite: {fileID: 1997828774, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}

@@ -27,6 +27,8 @@ MonoBehaviour:
   - 1
   - 1.5
   counts: 0100000001000000010000000200000002000000
-  projectile: {fileID: 9045947043296347826, guid: 991b18432cfcb4c4cabda7239ce9a72e, type: 3}
+  projectile: {fileID: 0}
   hand: {fileID: 0}
   customEvolutions: []
+  customProjectileEvolutions: []
+  transcendenceDescs: []

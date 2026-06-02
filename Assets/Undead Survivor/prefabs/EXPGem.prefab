@@ -165,6 +165,6 @@ MonoBehaviour:
   expValue: 1
   magnetSpeed: 8
   magnetDistance: 1
-  coinSprite: {fileID: -1997803578, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
-  healPackSprite: {fileID: 934571490, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
-  magnetSprite: {fileID: 1997828774, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  coinSprite: {fileID: 0}
+  healPackSprite: {fileID: 0}
+  magnetSprite: {fileID: 0}

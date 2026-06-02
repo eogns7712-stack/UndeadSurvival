@@ -90,7 +90,7 @@ public class Weapon : MonoBehaviour
             if (nextSprite != null)
             {
                 // 1. 플레이어가 장착하고 조준하는 Hand 스프라이트 이미지 진화
-                Hand hand = player.hands[id == 0 ? 0 : 1];
+                Hand hand = player.hands[(int)originData.itemType];
                 if (hand != null && hand.spriter != null)
                 {
                     hand.spriter.sprite = nextSprite;
@@ -186,10 +186,21 @@ public class Weapon : MonoBehaviour
             // Space.World의 의미 : 월드좌표 기준으로 이동, 즉 부모 회전에 영향을 받지않아 정확한 위치에 배치
 
             bullet.GetComponent<Bullet>().Init(damage, -100, Vector3.zero); // -100 is Infinity Per.
-            // [초월 비주얼 반영] 사출되는 투사체 이미지도 진화형으로 교체
+            
+            // [초월 투사체 분리 반영] 사출되는 투사체 전용 이미지 등록 체크
             int evolutionIndex = masterUpgradeCount - 1;
-            if (originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
+            if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
             {
+                Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
+                SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
+                if (bRenderer != null && projectileSprite != null)
+                {
+                    bRenderer.sprite = projectileSprite;
+                }
+            }
+            else if (originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
+            {
+                // 발사체 전용이 없을 시, 무기 스프라이트(Melee)로 대체
                 Sprite projectileSprite = originData.customEvolutions[evolutionIndex];
                 SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
                 if (bRenderer != null && projectileSprite != null)
@@ -265,5 +276,4 @@ public class Weapon : MonoBehaviour
 
         AudioManager.instance.PlaySfx(AudioManager.Sfx.Range);
     }
-        
 }

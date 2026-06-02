@@ -29,5 +29,17 @@ MonoBehaviour:
   projectile: {fileID: 9045947043296347826, guid: 15d8b3901cbf86f40ac2a7845979364d, type: 3}
   hand: {fileID: -353751291, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
   customEvolutions:
+  - {fileID: -144335857, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  - {fileID: 1772703093, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  customProjectileEvolutions:
   - {fileID: -1327499133, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
   - {fileID: 154122315, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  transcendenceDescs:
+  - "<color=yellow>[M1 \uB77C\uC774\uD50C \uC9C4\uD654]</color>\n\uC815\uAD50\uD558\uACE0
+    \uB0A0\uCE74\uB85C\uC6B4 \uD0C4\uD658\uC744 \uCD08\uACE0\uC18D\uC73C\uB85C \uC5F0\uC18D
+    \uC810\uC0AC\uD569\uB2C8\uB2E4.\n\uC555\uB3C4\uC801\uC778 \uD22C\uC0AC \uC18D\uB3C4\uC640
+    \uB2E8\uC77C \uD0C0\uACA9 \uD654\uB825\uC774 \uB204\uC801\uB429\uB2C8\uB2E4."
+  - "<color=orange>[M2 \uC0F7\uAC74 \uCD5C\uC885\uC9C4\uD654]</color>\n\uAD11\uBC94\uC704
+    \uC81C\uC555 \uC0AC\uACA9\uC744 \uAC00\uD558\uB294 \uD654\uB048\uD55C \uC0B0\uD0C4\uC744
+    \uC0AC\uBC29\uC5D0 \uB09C\uC0AC\uD569\uB2C8\uB2E4.\n\uD55C \uBC88\uC5D0 \uB113\uC740
+    \uBD80\uCC44\uAF34 \uBC94\uC704\uB97C \uB3D9\uC2DC\uC5D0 \uD0C0\uACA9\uD569\uB2C8\uB2E4."
