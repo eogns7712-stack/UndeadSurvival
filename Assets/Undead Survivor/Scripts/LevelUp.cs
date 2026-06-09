@@ -41,25 +41,28 @@ public class LevelUp : MonoBehaviour
             Select(2);
         }
     }
-    public void Show()  // 창을 보이고 숨기는 함수 작성
+
+    public void Show()  // 레벨업 창을 보여주고 일시정지하는 함수 작성
     {
-        Next(); // 창을 보이게 할 때 Next함수 호출
+        Next();
         isSelecting = true;
-        rect.localScale = Vector3.one;  // (1,1,1)
-        GameManager.instance.Stop();    // UI가 출력될 때 게임을 정지하는 함수 호출
-        AudioManager.instance.PlaySfx(AudioManager.Sfx.LevelUp); // 레벨업시 효과음 재생
-        AudioManager.instance.EffectBgm(true);  // 레벨업UI가 나타날 때 필터를 켜고, 사라지면 끄도록 함수 호출
-        ToggleKeyBadges(true);  // 단축키 비주얼 배지 활성화
+        rect.localScale = Vector3.one;  // 크기를 1로 조절하여 화면에 표시
+        GameManager.instance.Stop();    // 게임정지 함수 호출
+        AudioManager.instance.EffectBgm(true);  // 하이패스 효과 켜기
+
+        // 단축키 비주얼 배지 활성화
+        ToggleKeyBadges(true);
     }
 
-    public void Hide()
+    public void Hide()  // 레벨업창을 숨기고 일시정지를 해제하는 함수 작성
     {
         isSelecting = false;
-        rect.localScale = Vector3.zero;
-        GameManager.instance.Resume();  // UI가 사라질 때 게임을 재생하는 함수 호출
-        AudioManager.instance.PlaySfx(AudioManager.Sfx.Select); // 레벨업 아이템 버튼 클릭시 효과음 재생
-        AudioManager.instance.EffectBgm(false);  // 레벨업UI가 나타날 때 필터를 켜고, 사라지면 끄도록 함수 호출
-        ToggleKeyBadges(false); // 단축키 비주얼 배지 비활성화
+        rect.localScale = Vector3.zero; // 크기를 0으로 만들어 숨김처리
+        GameManager.instance.Resume();  // 일시정지 해제 함수 호출
+        AudioManager.instance.EffectBgm(false); // 하이패스 효과 끄기
+
+        // 단축키 비주얼 배지 비활성화
+        ToggleKeyBadges(false);
     }
 
     // 단축키 UI 요소들을 켰다 꺼주는 함수
@@ -88,7 +91,6 @@ public class LevelUp : MonoBehaviour
             Hide();
     }
 
-    // [버그 수정] 카드 개수가 가끔 3개 미만으로 나타나던 정렬 및 중복 대체 연산 오작동 해결
     void Next() // 레벨업 선택창에서 아이템 3개를 랜덤으로 보여주는 함수
     {
         // 1. 모든 아이템 비활성화
@@ -97,38 +99,35 @@ public class LevelUp : MonoBehaviour
             item.gameObject.SetActive(false);
         }
 
-        // 2. 가용 후보 인덱스 리스트 추출 (Heal 카드는 중복 보정용이므로 후보군에서 일단 배제)
+        // 2. 그 중에서 중복 없이 랜덤 3개 아이템 인덱스 리스트 추출
         List<int> validIndices = new List<int>();
-        for (int i = 0; i < items.Length - 1; i++)
+        for (int i = 0; i < items.Length; i++)
         {
             validIndices.Add(i);
         }
 
-        // 3. 중복 없이 랜덤 3개 인덱스 추출
         List<int> selectedList = new List<int>();
-        int targetCount = Mathf.Min(3, validIndices.Count);
-
-        while (selectedList.Count < targetCount && validIndices.Count > 0)
+        int activeCount = 0;
+        while (activeCount < 3 && validIndices.Count > 0)
         {
             int randPos = Random.Range(0, validIndices.Count);
             int selectedItemIdx = validIndices[randPos];
-            validIndices.RemoveAt(randPos);
             selectedList.Add(selectedItemIdx);
+            validIndices.RemoveAt(randPos);
+            activeCount++;
         }
 
-        // 4. 만렙 도달 아이템의 중복 없는 정밀 대체 처리
+        // 3. 만렙 도달 아이템의 대체 여부를 설정
         bool hasHealBeenAdded = false;
-
         for (int i = 0; i < selectedList.Count; i++)
         {
             Item ranItem = items[selectedList[i]];
 
-            // 만렙 도달 장비/아이템의 럭키 소비 힐템 대체 분기
             if (ranItem.level >= ranItem.data.damages.Length)
             {
-                // 패시브 기어(초월 성장이 미설계된 장비)이거나, 40% 확률로 힐팩 대체가 활성화되었을 때
-                bool isPassiveGear = (ranItem.data.itemType == ItemData.ItemType.Glove || ranItem.data.itemType == ItemData.ItemType.Shoe);
-                bool shouldReplaceWithHeal = isPassiveGear || (Random.value < 0.4f);
+                // [수정 완료] 패시브 기어(장갑, 신발)도 무기처럼 한계 한도 없이 무한히 초월할 수 있도록 분기를 완전히 개방했습니다!
+                // 단, 무작위로 40%의 물약 대체를 거쳐서 등장하며, 초월 시 무기 데미지는 절대 가산되지 않도록 보호 처리되어 있습니다.
+                bool shouldReplaceWithHeal = (Random.value < 0.4f);
 
                 if (shouldReplaceWithHeal)
                 {
@@ -139,12 +138,12 @@ public class LevelUp : MonoBehaviour
                         hasHealBeenAdded = true;
                     }
                     // 이미 Heal 카드가 출력되어 있는 상태라면, 카드 소실(동일 인스턴스 중첩)을 막기 위해 
-                    // 해당 만렙 장비의 무한 초월 성장 카드 형태를 그대로 노출하여 3장 슬롯을 수호합니다.
+                    // 해당 패시브 장비의 공속/이속 초월 성장 카드가 화면에 정상 노출되도록 3장 슬롯을 수호합니다.
                 }
             }
         }
 
-        // 5. currentChoices 인덱스 안전 바인딩
+        // 4. currentChoices 인덱스 안전 바인딩
         for (int i = 0; i < selectedList.Count; i++)
         {
             currentChoices[i] = selectedList[i];
@@ -156,16 +155,17 @@ public class LevelUp : MonoBehaviour
             currentChoices[i] = -1;
         }
 
-        // 1, 2, 3 정렬 매치 일관성을 위해 오름차순으로 완벽 정렬
-        System.Array.Sort(currentChoices, 0, selectedList.Count);
+        // [완료] currentChoices 원본 정렬 추가!
+        // items 리스트는 GetComponentsInChildren으로 가져왔으므로 계층구조상 정렬(위에서 아래)되어 있습니다.
+        // 무작위로 뽑힌 인덱스들을 오름차순으로 한 번 묶어줌으로써, 화면에 실제로 배치되는 Visual 순서(1, 2, 3번)와
+        // 키보드 숫자 1, 2, 3 매핑을 언제나 완벽하게 일치시킵니다.
+        System.Array.Sort(currentChoices, 0, activeCount);
 
-        // 6. UI 카드 게임오브젝트 동적 활성화
-        for (int index = 0; index < selectedList.Count; index++)
+        for (int index = 0; index < activeCount; index++)
         {
-            int itemIndex = currentChoices[index];
-            if (itemIndex >= 0 && itemIndex < items.Length)
+            if (currentChoices[index] != -1)
             {
-                items[itemIndex].gameObject.SetActive(true);
+                items[currentChoices[index]].gameObject.SetActive(true);
             }
         }
     }

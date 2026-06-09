@@ -27,7 +27,7 @@ public class Item : MonoBehaviour
         Text[] texts = GetComponentsInChildren<Text>();
         textLevel = texts[0];
         textName = texts[1];
-        textDesc = texts[2];    // GetComponents의 순서는 계층구조의 순서를 따라감
+        textDesc = texts[2];    // GetComponents of hierarchy order
         textName.text = data.itemName;
     }
 
@@ -53,12 +53,12 @@ public class Item : MonoBehaviour
                 if (stage == 1)
                 {
                     evolutionStepName = " [M1 갈퀴]";
-                    customDescription = "사방의 몹을 쓸어 모으는 <color=yellow>갈퀴</color>로 진화합니다.\n화력 +15% 및 무기 슬롯 개수가 증가합니다.";
+                    customDescription = "사방의 몹을 쓸어 모으는 <color=yellow>갈퀴</color>로 진화합니다.\n화력 +15% 및 무기 슬롯이 증가합니다.";
                 }
                 else if (stage >= 2)
                 {
                     evolutionStepName = " [M2 낫]";
-                    customDescription = "거대한 사신의 <color=orange>낫</color>으로 최종 진화합니다.\n회전 속도가 증가하며 범위 스플래시가 가중됩니다.";
+                    customDescription = "사신의 <color=orange>낫</color>으로 최종 진화합니다.\n회전 속도가 비약적으로 증가합니다.";
                 }
             }
             else if (data.itemId == 1) // 원거리무기 총
@@ -66,17 +66,39 @@ public class Item : MonoBehaviour
                 if (stage == 1)
                 {
                     evolutionStepName = " [M1 라이플]";
-                    customDescription = "고속 연속 점사가 보장되는 <color=yellow>라이플</color>로 진화합니다.\n정교한 탄환이 고속 점사 발사됩니다.";
+                    customDescription = "고속 연속 점사가 보장되는 <color=yellow>라이플</color>로 진화합니다.\n정교한 탄환이 빠르게 사출됩니다.";
                 }
                 else if (stage >= 2)
                 {
                     evolutionStepName = " [M2 샷건]";
-                    customDescription = "산탄을 사방으로 난사하는 <color=orange>샷건</color>으로 진화합니다.\n광범위 스플래시 제압 사격이 펼쳐집니다.";
+                    customDescription = "탄환을 뿜는 <color=orange>샷건</color>으로 최종 진화합니다.\n광범위 스플래시 산탄 사격이 펼쳐집니다.";
                 }
             }
             else
             {
-                customDescription = $"{data.itemName}의 구조를 고도화하여 영구 강화합니다.\n공격 효율성이 추가 누적 가산됩니다.";
+                // [수정 완료] 장갑(Glove) 및 신발(Shoe) 초월 시, 무기 대미지에 오해나 악영향을 주지 않도록 문구를 엄격 분리 격리합니다!
+                if (data.itemType == ItemData.ItemType.Glove)
+                {
+                    evolutionStepName = " [공속 초월]";
+                    customDescription = "장갑의 한계를 극복하여 <color=cyan>공격 속도</color>를 가속합니다.\n공격 속도가 단계별로 <color=yellow>+4%</color> 추가 누적 가산됩니다.\n<color=red>(※ 무기 대미지에는 영향을 주지 않습니다.)</color>";
+                }
+                else if (data.itemType == ItemData.ItemType.Shoe)
+                {
+                    evolutionStepName = " [이동 초월]";
+                    customDescription = "신발의 한계를 극복하여 <color=cyan>이동 속도</color>를 가속합니다.\n이동 속도가 단계별로 <color=yellow>+4%</color> 추가 누적 가산됩니다.\n<color=red>(※ 무기 대미지에는 영향을 주지 않습니다.)</color>";
+                }
+                else
+                {
+                    customDescription = $"{data.itemName}의 구조를 고도화하여 영구 강화합니다.\n공격 효율성이 추가 누적 가산됩니다.";
+                }
+            }
+
+            // [수정 완료] 만약 ItemData 에셋의 'Transcendence Descriptions' 배열에 직접 작성한 전용 설명글이 존재한다면, 
+            // 위의 기획 가이드 텍스트보다 우선 순위로 덮어씌워 출력하여 유저님만의 개행/줄바꿈 문구를 완벽 보장합니다!
+            int descIndex = stage - 1;
+            if (data.transcendenceDescs != null && descIndex < data.transcendenceDescs.Length && !string.IsNullOrEmpty(data.transcendenceDescs[descIndex]))
+            {
+                customDescription = data.transcendenceDescs[descIndex];
             }
 
             // [레이아웃 겹침 해결] 좁은 왼쪽 레벨칸에는 아주 심플하게 "M1 L.1" 형태로 표기하여 겹침을 방지합니다.
@@ -148,14 +170,13 @@ public class Item : MonoBehaviour
             case ItemData.ItemType.Shoe:
                 if (level == 0)
                 {
-                    GameObject newGear = new GameObject();    // 게임 오브젝트를 스크립트로 만들 수 있음, 새로운 게임 오브젝트를 코드로 작성
-                    gear = newGear.AddComponent<Gear>();    // AddComponent<T> : 게임 오브젝트에 T컴포넌트를 추가하는 함수
-                    // AddComponent 함수 반환값을 미리 선언한 변수에 저장
+                    GameObject newGear = new GameObject();    // 새로운 패시브 장비 기어 생성
+                    gear = newGear.AddComponent<Gear>();    
                     gear.Init(data);
                 }
                 else if (level >= data.damages.Length)
                 {
-                    // 패시브 장비 만렙 이후 초월 적용 (장갑의 공격속도, 신발 이동속도를 소폭 추가 강화)
+                    // [수정 완료] 패시브 장비 만렙 이후 초월 적용 (장갑의 공격속도, 신발 이동속도를 소폭 추가 강화하며 무기 공격력에는 영향 무)
                     if (gear != null)
                     {
                         float nextRate = data.damages[data.damages.Length - 1] + (0.04f * (level - data.damages.Length + 1));

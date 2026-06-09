@@ -229,10 +229,20 @@ public class Weapon : MonoBehaviour
         // Bullet.cs 에 플레이어 위치를 전달하여 최대 사거리 제한을 연산하도록 초기화
         bullet.GetComponent<Bullet>().Init(damage, count, dir, transform.position); 
         
-        // [초월 비주얼 반영] 사출되는 원거리 총알 이미지도 진화형으로 교체
+        // [버그 수정 완료] 원거리 총알 격발 시에는 총기 본체(customEvolutions)가 아닌, 전용 탄환 이미지(customProjectileEvolutions)를 명확히 할당!
         int evolutionIndex = masterUpgradeCount - 1;
-        if (originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
+        if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
         {
+            Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
+            SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
+            if (bRenderer != null && projectileSprite != null)
+            {
+                bRenderer.sprite = projectileSprite;
+            }
+        }
+        else if (originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
+        {
+            // 탄환 전용이 등록되어 있지 않을 경우에만 기존처럼 customEvolutions로 롤백 적용
             Sprite projectileSprite = originData.customEvolutions[evolutionIndex];
             SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
             if (bRenderer != null && projectileSprite != null)

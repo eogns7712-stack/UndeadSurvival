@@ -16,7 +16,7 @@ public class Bullet : MonoBehaviour
 
     // [추가] 폭발형 무기(폭탄) 관련 변수들
     public bool isBomb = false;
-    public float explosionRadius = 2.5f;
+    public float explosionRadius = 4.5f;
 
     void Awake()
     {   // 변수 초기화
@@ -97,7 +97,7 @@ public class Bullet : MonoBehaviour
         }
     }
 
-    // [추가] 폭탄 무기의 스플래시 폭발 범위 대미지 연산
+    // [추가] 폭탄 무기의 스플래시 폭발 범위 대미지 연산 및 폭발 이펙트 호출 연동 완료!
     void Explode()
     {
         // 1. 폭발 반경 내부의 모든 Enemy 레이어 스캔
@@ -111,6 +111,14 @@ public class Bullet : MonoBehaviour
                 enemy.TakeDamage(damage);
             }
         }
+
+        // [이펙트 비주얼 교체] 수류탄이 커지는 대신, 메모리에서 직접 그린 이쁜 오렌지빛 불꽃 원이 펼쳐지도록 호출합니다.
+        GameObject fxObject = new GameObject("TemporaryExplosionVFX");
+        fxObject.transform.position = transform.position;
+        TemporaryExplosionFX fxComp = fxObject.AddComponent<TemporaryExplosionFX>();
+        
+        // 폭발 스케일을 반경 크기와 정확하게 동조시킵니다 (기존의 과한 1.8배에서 1.05배 수준으로 축소)
+        fxComp.PlayExplosion(explosionRadius);
 
         // 2. 효과음 재생
         AudioManager.instance.PlaySfx(AudioManager.Sfx.Dead); // 폭발 사운드 대용 활용
@@ -138,16 +146,48 @@ public class TemporaryExplosionFX : MonoBehaviour
     private float elapsed = 0f;
     private Vector3 maxScale;
 
-    public void PlayExplosion(Sprite bombSprite, float radius)
+    // [버그 해결] 수류탄이 커지는 현상을 막기 위해, 원형 텍스처를 절차적으로 생성하여 깔끔한 화염파로 표현
+    public void PlayExplosion(float radius)
     {
         sr = gameObject.AddComponent<SpriteRenderer>();
-        sr.sprite = bombSprite;
-        sr.color = new Color(1f, 0.45f, 0.05f, 0.85f); // 뜨거운 화염의 오렌지-레드 광원 컬러
-        sr.sortingOrder = 5; // 적들보다 상위에 렌더링되도록 레이어 가산
+        
+        // 런타임에 부드러운 원형 화염 텍스처를 그립니다.
+        sr.sprite = CreateSmoothCircleSprite();
+        sr.color = new Color(1f, 0.4f, 0.05f, 0.85f); // 화사하고 뜨거운 오렌지 파동
+        sr.sortingOrder = 5; // 피아 구분선보다 항상 위로 드로잉
         
         transform.localScale = Vector3.one * 0.1f;
-        // 폭발 반경에 비례하여 부풀어 오를 최종 스케일 지정
-        maxScale = Vector3.one * radius * 1.8f; 
+        // 인게임 실제 스플래시 대미지 영역(radius)과 정확하게 눈으로 매칭되도록 가중치 1.05로 고정
+        maxScale = Vector3.one * radius * 1.05f; 
+    }
+
+    // 픽셀 연산을 이용해 외곽선이 계단현상 없이 부드러운 전용 원형 스프라이트 생성
+    private Sprite CreateSmoothCircleSprite()
+    {
+        int size = 64;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        float center = size / 2f;
+        float radius = size / 2f - 2f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                if (dist <= radius)
+                {
+                    // 가장자리(AA) 투명도 보간 연산
+                    float alpha = Mathf.Clamp01((radius - dist) / 2.0f);
+                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                }
+                else
+                {
+                    texture.SetPixel(x, y, Color.clear);
+                }
+            }
+        }
+        texture.Apply();
+        return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
     }
 
     void Update()
@@ -162,7 +202,8 @@ public class TemporaryExplosionFX : MonoBehaviour
         if (sr != null)
         {
             float alpha = Mathf.Lerp(0.85f, 0f, t);
-            sr.color = new Color(1f, Mathf.Lerp(0.45f, 0.15f, t), 0.05f, alpha);
+            // 안쪽은 백열색, 끝으로 갈수록 빨간색이 되며 사라지는 그라데이션 불꽃 구현
+            sr.color = new Color(1f, Mathf.Lerp(0.45f, 0.1f, t), 0.02f, alpha);
         }
 
         // 3. 연출 시간이 끝나면 오브젝트 자동 파괴 및 메모리 정리
