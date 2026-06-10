@@ -48,57 +48,75 @@ public class Item : MonoBehaviour
             string evolutionStepName = "";
             string customDescription = "";
 
+            // 초월 단계에 맞춰 실시간으로 대입할 마스터 가산 비율을 연산합니다.
+            float displayDamagePct = 12f; // 무기 기본 초월 대미지 (12%)
+            int displayCount = 1;         // 무기 기본 초월 추가 개수 (1개)
+
             if (data.itemId == 0) // 근접무기 삽
             {
-                if (stage == 1)
-                {
-                    evolutionStepName = " [M1 갈퀴]";
-                    customDescription = "사방의 몹을 쓸어 모으는 <color=yellow>갈퀴</color>로 진화합니다.\n화력 +15% 및 무기 슬롯이 증가합니다.";
-                }
-                else if (stage >= 2)
-                {
-                    evolutionStepName = " [M2 낫]";
-                    customDescription = "사신의 <color=orange>낫</color>으로 최종 진화합니다.\n회전 속도가 비약적으로 증가합니다.";
-                }
+                evolutionStepName = (stage == 1) ? " [M1 갈퀴]" : " [M2 낫]";
             }
             else if (data.itemId == 1) // 원거리무기 총
             {
+                evolutionStepName = (stage == 1) ? " [M1 라이플]" : " [M2 샷건]";
+                
+                // 총기류 초월 특성에 걸맞는 전용 수치를 계산하여 포맷팅에 기입합니다.
                 if (stage == 1)
                 {
-                    evolutionStepName = " [M1 라이플]";
-                    customDescription = "고속 연속 점사가 보장되는 <color=yellow>라이플</color>로 진화합니다.\n정교한 탄환이 빠르게 사출됩니다.";
+                    displayDamagePct = -30f; // 라이플 대미지 30% 감소
                 }
-                else if (stage >= 2)
+                else
                 {
-                    evolutionStepName = " [M2 샷건]";
-                    customDescription = "탄환을 뿜는 <color=orange>샷건</color>으로 최종 진화합니다.\n광범위 스플래시 산탄 사격이 펼쳐집니다.";
+                    displayDamagePct = 120f; // 샷건 대미지 120% 폭증
+                    displayCount = 3;        // 3발 분산 사격화
+                }
+            }
+            else if (data.itemId == 4) // [버그 수정 완료] 원거리무기 수류탄 분기 정식 연동!
+            {
+                evolutionStepName = (stage == 1) ? " [M1 파편 수류탄]" : " [M2 소이 탄두]";
+                
+                // 수류탄 초월 기획 전용 대칭 데이터 연산 기입
+                if (stage == 1)
+                {
+                    displayDamagePct = 35f;  // 파편 비산 대미지 증가율
+                    displayCount = 5;        // 파편 개수 가산
+                }
+                else
+                {
+                    displayDamagePct = 80f;   // 소이탄 지옥불 중심 대미지 폭증
+                    displayCount = 1;        // 지옥불 화염 영역 개수
                 }
             }
             else
             {
-                // [수정 완료] 장갑(Glove) 및 신발(Shoe) 초월 시, 무기 대미지에 오해나 악영향을 주지 않도록 문구를 엄격 분리 격리합니다!
-                if (data.itemType == ItemData.ItemType.Glove)
-                {
-                    evolutionStepName = " [공속 초월]";
-                    customDescription = "장갑의 한계를 극복하여 <color=cyan>공격 속도</color>를 가속합니다.\n공격 속도가 단계별로 <color=yellow>+4%</color> 추가 누적 가산됩니다.\n<color=red>(※ 무기 대미지에는 영향을 주지 않습니다.)</color>";
-                }
-                else if (data.itemType == ItemData.ItemType.Shoe)
-                {
-                    evolutionStepName = " [이동 초월]";
-                    customDescription = "신발의 한계를 극복하여 <color=cyan>이동 속도</color>를 가속합니다.\n이동 속도가 단계별로 <color=yellow>+4%</color> 추가 누적 가산됩니다.\n<color=red>(※ 무기 대미지에는 영향을 주지 않습니다.)</color>";
-                }
-                else
-                {
-                    customDescription = $"{data.itemName}의 구조를 고도화하여 영구 강화합니다.\n공격 효율성이 추가 누적 가산됩니다.";
-                }
+                // 패시브 장비류(장갑, 신발) 초월
+                evolutionStepName = (data.itemType == ItemData.ItemType.Glove) ? " [공속 초월]" : " [이동 초월]";
+                displayDamagePct = 4f; // 장갑/신발 속도 4% 가산
+                displayCount = 0;
             }
 
-            // [수정 완료] 만약 ItemData 에셋의 'Transcendence Descriptions' 배열에 직접 작성한 전용 설명글이 존재한다면, 
-            // 위의 기획 가이드 텍스트보다 우선 순위로 덮어씌워 출력하여 유저님만의 개행/줄바꿈 문구를 완벽 보장합니다!
+            // [하드코딩 제거 핵심] 
+            // ItemData의 'Transcendence Descriptions' 배열에 적혀 있는 "{0}", "{1}" 포맷 양식을 읽어와 수치를 동적으로 맵핑합니다.
             int descIndex = stage - 1;
             if (data.transcendenceDescs != null && descIndex < data.transcendenceDescs.Length && !string.IsNullOrEmpty(data.transcendenceDescs[descIndex]))
             {
-                customDescription = data.transcendenceDescs[descIndex];
+                // 에셋에 수치 포맷({0}, {1})을 포함해 적어둔 규칙이 있다면 실시간 동적 완성 가동!
+                customDescription = string.Format(data.transcendenceDescs[descIndex], displayDamagePct, displayCount);
+            }
+            else
+            {
+                // 에셋에 초월 설명이 아예 비어있을 때 오작동을 차단하는 기본 가이드문 제공 (안전 Fallback 장치)
+                if (data.itemId == 4)
+                {
+                    if (stage == 1)
+                        customDescription = $"수류탄이 공중에서 분열해 <color=yellow>{displayCount}개</color>의 소형 파편으로 쪼개집니다.\n기본 대미지가 <color=yellow>+{displayDamagePct}%</color> 가산됩니다.";
+                    else
+                        customDescription = $"폭발지에 <color=orange>지옥불 소이 지대</color>를 <color=yellow>{displayCount}개</color> 잔류시킵니다.\n중심부 데미지가 <color=orange>+{displayDamagePct}%</color> 폭증합니다.";
+                }
+                else
+                {
+                    customDescription = "돌파 강화를 가동합니다.\n성능 효율성이 추가 누적 가산됩니다.";
+                }
             }
 
             // [레이아웃 겹침 해결] 좁은 왼쪽 레벨칸에는 아주 심플하게 "M1 L.1" 형태로 표기하여 겹침을 방지합니다.

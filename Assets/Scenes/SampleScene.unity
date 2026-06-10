@@ -157,7 +157,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 26, y: -7}
-  m_SizeDelta: {x: 18, y: 0}
+  m_SizeDelta: {x: 64, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &27286195
 MonoBehaviour:
@@ -189,7 +189,7 @@ MonoBehaviour:
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: "\uC544\uC774\uD15C \uC124\uBA85\n\uC544\uC774\uD15C \uC124\uBA85"
@@ -533,7 +533,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 26, y: -7}
-  m_SizeDelta: {x: 18, y: 0}
+  m_SizeDelta: {x: 64, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &189280765
 MonoBehaviour:
@@ -565,7 +565,7 @@ MonoBehaviour:
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: "\uC544\uC774\uD15C \uC124\uBA85\n\uC544\uC774\uD15C \uC124\uBA85"
@@ -6377,7 +6377,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 26, y: -7}
-  m_SizeDelta: {x: 18, y: 0}
+  m_SizeDelta: {x: 64, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &445142976
 MonoBehaviour:
@@ -6409,7 +6409,7 @@ MonoBehaviour:
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: "\uC544\uC774\uD15C \uC124\uBA85\n\uC544\uC774\uD15C \uC124\uBA85"
@@ -14187,7 +14187,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 26, y: -7}
-  m_SizeDelta: {x: 18, y: 0}
+  m_SizeDelta: {x: 64, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &1091027494
 MonoBehaviour:
@@ -14219,7 +14219,7 @@ MonoBehaviour:
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: "\uC544\uC774\uD15C \uC124\uBA85\n\uC544\uC774\uD15C \uC124\uBA85"
@@ -16031,7 +16031,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 26, y: -7}
-  m_SizeDelta: {x: 18, y: 0}
+  m_SizeDelta: {x: 64, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &1380378158
 MonoBehaviour:
@@ -16063,7 +16063,7 @@ MonoBehaviour:
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: "\uC544\uC774\uD15C \uC124\uBA85\n\uC544\uC774\uD15C \uC124\uBA85"
@@ -16833,7 +16833,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
   m_AnchoredPosition: {x: 26, y: -7}
-  m_SizeDelta: {x: 18, y: 0}
+  m_SizeDelta: {x: 64, y: 50}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &1600581918
 MonoBehaviour:
@@ -16865,7 +16865,7 @@ MonoBehaviour:
     m_Alignment: 3
     m_AlignByGeometry: 0
     m_RichText: 1
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: "\uC544\uC774\uD15C \uC124\uBA85\n\uC544\uC774\uD15C \uC124\uBA85"
@@ -18079,9 +18079,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1e+14
   per: -100
+  prefabId: 0
+  explosionVFXPrefab: {fileID: 0}
   maxRange: 12
   isBomb: 0
   explosionRadius: 2.5
+  bombStage: 0
+  fireZonePrefab: {fileID: 0}
 --- !u!61 &1724541487
 BoxCollider2D:
   m_ObjectHideFlags: 0

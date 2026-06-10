@@ -91,6 +91,7 @@ public class LevelUp : MonoBehaviour
             Hide();
     }
 
+    // [버그 수정 완료] 중복 인덱스 대체 계산 오류를 완전 제거하여, 항상 깨끗하게 3개 가용 슬롯이 출현하도록 수정!
     void Next() // 레벨업 선택창에서 아이템 3개를 랜덤으로 보여주는 함수
     {
         // 1. 모든 아이템 비활성화
@@ -99,25 +100,26 @@ public class LevelUp : MonoBehaviour
             item.gameObject.SetActive(false);
         }
 
-        // 2. 그 중에서 중복 없이 랜덤 3개 아이템 인덱스 리스트 추출
+        // 2. 가용 후보 인덱스 리스트 추출 (Heal 카드는 중복 보정용이므로 후보군에서 일단 배제)
         List<int> validIndices = new List<int>();
-        for (int i = 0; i < items.Length; i++)
+        for (int i = 0; i < items.Length - 1; i++)
         {
             validIndices.Add(i);
         }
 
+        // 3. 중복 없이 랜덤 3개 인덱스 안전 추출
         List<int> selectedList = new List<int>();
-        int activeCount = 0;
-        while (activeCount < 3 && validIndices.Count > 0)
+        int targetCount = Mathf.Min(3, validIndices.Count);
+
+        while (selectedList.Count < targetCount && validIndices.Count > 0)
         {
             int randPos = Random.Range(0, validIndices.Count);
             int selectedItemIdx = validIndices[randPos];
-            selectedList.Add(selectedItemIdx);
             validIndices.RemoveAt(randPos);
-            activeCount++;
+            selectedList.Add(selectedItemIdx);
         }
 
-        // 3. 만렙 도달 아이템의 대체 여부를 설정
+        // 4. 만렙 도달 아이템의 대체 여부를 설정
         bool hasHealBeenAdded = false;
         for (int i = 0; i < selectedList.Count; i++)
         {
@@ -125,8 +127,8 @@ public class LevelUp : MonoBehaviour
 
             if (ranItem.level >= ranItem.data.damages.Length)
             {
-                // [수정 완료] 패시브 기어(장갑, 신발)도 무기처럼 한계 한도 없이 무한히 초월할 수 있도록 분기를 완전히 개방했습니다!
-                // 단, 무작위로 40%의 물약 대체를 거쳐서 등장하며, 초월 시 무기 데미지는 절대 가산되지 않도록 보호 처리되어 있습니다.
+                // 패시브 기어(장갑, 신발)도 무기처럼 한계 한도 없이 무한히 초월할 수 있도록 분기를 완전히 개방했습니다!
+                // 단, 무작위로 40%의 확률로 물약(Heal) 대체를 거쳐서 등장합니다.
                 bool shouldReplaceWithHeal = (Random.value < 0.4f);
 
                 if (shouldReplaceWithHeal)
@@ -134,16 +136,16 @@ public class LevelUp : MonoBehaviour
                     // [중요] Heal 카드가 중복하여 추가되지 않은 깨끗한 상태에서만 단 1회 대체 승인!
                     if (!hasHealBeenAdded)
                     {
-                        selectedList[i] = items.Length - 1; // items 리스트 맨 마지막 Heal 카드로 변경
+                        selectedList[i] = items.Length - 1; // items 리스트 맨 마지막 Heal 카드로 안전 우회 변경
                         hasHealBeenAdded = true;
                     }
                     // 이미 Heal 카드가 출력되어 있는 상태라면, 카드 소실(동일 인스턴스 중첩)을 막기 위해 
-                    // 해당 패시브 장비의 공속/이속 초월 성장 카드가 화면에 정상 노출되도록 3장 슬롯을 수호합니다.
+                    // 해당 만렙 장비의 초월 성장 카드가 화면에 정상 노출되도록 안전을 수호합니다.
                 }
             }
         }
 
-        // 4. currentChoices 인덱스 안전 바인딩
+        // 5. currentChoices 인덱스 안전 바인딩
         for (int i = 0; i < selectedList.Count; i++)
         {
             currentChoices[i] = selectedList[i];
@@ -156,12 +158,11 @@ public class LevelUp : MonoBehaviour
         }
 
         // [완료] currentChoices 원본 정렬 추가!
-        // items 리스트는 GetComponentsInChildren으로 가져왔으므로 계층구조상 정렬(위에서 아래)되어 있습니다.
-        // 무작위로 뽑힌 인덱스들을 오름차순으로 한 번 묶어줌으로써, 화면에 실제로 배치되는 Visual 순서(1, 2, 3번)와
-        // 키보드 숫자 1, 2, 3 매핑을 언제나 완벽하게 일치시킵니다.
-        System.Array.Sort(currentChoices, 0, activeCount);
+        // 이 정렬을 통해 1, 2, 3 선택 슬롯과 키보드 입력 매칭이 언제나 일치합니다.
+        System.Array.Sort(currentChoices, 0, selectedList.Count);
 
-        for (int index = 0; index < activeCount; index++)
+        // 6. UI 카드 게임오브젝트 동적 활성화
+        for (int index = 0; index < selectedList.Count; index++)
         {
             if (currentChoices[index] != -1)
             {

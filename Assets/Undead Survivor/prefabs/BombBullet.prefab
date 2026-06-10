@@ -101,9 +101,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 10
   per: 1
+  prefabId: 0
+  explosionVFXPrefab: {fileID: 209741713894584611, guid: f9bb1dd9d26fb744b8a0d5edb7805b4c, type: 3}
   maxRange: 12
   isBomb: 0
   explosionRadius: 2.5
+  bombStage: 0
+  fireZonePrefab: {fileID: 209741713894584611, guid: f9bb1dd9d26fb744b8a0d5edb7805b4c, type: 3}
 --- !u!70 &1773029206211692072
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

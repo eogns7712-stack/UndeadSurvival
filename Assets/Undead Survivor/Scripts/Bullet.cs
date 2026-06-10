@@ -7,6 +7,8 @@ public class Bullet : MonoBehaviour
     // 데미지와 관통변수 선언
     public float damage;
     public int per;
+    public int prefabId; // [추가] 파편 생성을 위한 프리팹 ID 저장 변수
+    public GameObject explosionVFXPrefab;
 
     Rigidbody2D rigid;  // Rigidbody2D 변수 생성 및 초기화
 
@@ -17,38 +19,31 @@ public class Bullet : MonoBehaviour
     // [추가] 폭발형 무기(폭탄) 관련 변수들
     public bool isBomb = false;
     public float explosionRadius = 4.5f;
+    public int bombStage = 0; // 0: 일반, 1: M1 파편, 2: M2 불바다
+    public GameObject fireZonePrefab; // 인스펙터에서 설정
 
     void Awake()
     {   // 변수 초기화
         rigid = GetComponent<Rigidbody2D>();
     }
 
-    public void Init(float damage, int per, Vector3 dir)  // 변수 초기화 함수 선언
+    public void Init(float damage, int per, Vector3 dir, Vector3 startPos = default, int bombStage = 0, int prefabId = 0)
     {
-        this.damage = damage;   // this : 해당 클래스의 변수로 접근
+        this.damage = damage;
         this.per = per;
+        this.prefabId = prefabId;
+        this.bombStage = bombStage;
         this.isBomb = false;
         this.maxRange = 12f;
-        this.startPosition = transform.position;
+        this.startPosition = startPos == default ? transform.position : startPos;
+
+        // [삽 잔상 해결] 풀에서 가져온 객체의 렌더러와 상태를 즉시 초기화
+        SpriteRenderer sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.enabled = true;
 
         if (per >= 0)   // 관통(per)이 -1(무한)보다 큰 것에 대해서는 속도적용, 원거리무기의 per값이 0이거나 0보다 크면 속도적용하게 변경 (영상16 6:30)
         {
-            rigid.velocity = dir * 15f;   // .velocity : 속도
-        }
-    }
-
-    // [추가 오버로드] Weapon.cs의 Fire() 및 FireBomb() 호출 규격에 정확히 맞춘 4개 인수 버전의 Init 메서드 추가
-    public void Init(float damage, int per, Vector3 dir, Vector3 spawnPos)
-    {
-        this.damage = damage;   // this : 해당 클래스의 변수로 접근
-        this.per = per;
-        this.isBomb = false;
-        this.maxRange = 12f;
-        this.startPosition = spawnPos;
-
-        if (per >= 0)   // 관통(per)이 -1(무한)보다 큰 것에 대해서는 속도적용
-        {
-            rigid.velocity = dir * 15f;   // .velocity : 속도
+            rigid.velocity = dir * 15f; // .velocity : 속도
         }
     }
 
@@ -81,12 +76,18 @@ public class Bullet : MonoBehaviour
         if (!collision.CompareTag("Enemy") || per == -100) // || : or
             return;     // 즉시 반환
 
+        // 1. 폭탄이면 적에 닿는 즉시 폭발
         if (isBomb)
         {
-            Explode(); // 폭발 조건 발동
+            // 적 태그를 확인해야 한다면 여기서 필터링
+            if (collision.CompareTag("Enemy"))
+            {
+                Explode();
+            }
             return;
         }
 
+        if (!collision.CompareTag("Enemy") || per == -100) return;
         //충돌한 오브젝트의 태그가 'Enemy'거나 관통값(per)이 -1이 아니라면
         per --; // 관통값(per) 감소
         
@@ -97,33 +98,53 @@ public class Bullet : MonoBehaviour
         }
     }
 
-    // [추가] 폭탄 무기의 스플래시 폭발 범위 대미지 연산 및 폭발 이펙트 호출 연동 완료!
+    // [추가] 폭탄 무기의 스플래시 폭발 범위 대미지 연산 및 폭발 이펙트 호출
     void Explode()
     {
-        // 1. 폭발 반경 내부의 모든 Enemy 레이어 스캔
+        // 1. 데미지 판정
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(transform.position, explosionRadius, LayerMask.GetMask("Enemy"));
-        
         foreach (Collider2D enemyCollider in hitEnemies)
         {
             Enemy enemy = enemyCollider.GetComponent<Enemy>();
-            if (enemy != null)
+            if (enemy != null) enemy.TakeDamage(damage);
+        }
+
+        // 2. [비주얼] 동적 생성 대신 프리팹 인스턴스화 (훨씬 확실함)
+        if (explosionVFXPrefab != null)
+        {
+            GameObject vfx = Instantiate(explosionVFXPrefab, transform.position, Quaternion.identity);
+            Destroy(vfx, 1.0f); // 1초 후 자동 삭제
+        }
+        else
+        {
+            // 만약 프리팹이 없다면, 기존 코드 방식대로 하되 SpriteRenderer를 강제 추가
+            GameObject fxObject = new GameObject("TemporaryExplosionVFX");
+            fxObject.transform.position = transform.position;
+            fxObject.AddComponent<SpriteRenderer>(); // 이게 없어서 안 보였을 가능성 높음
+            TemporaryExplosionFX fxComp = fxObject.AddComponent<TemporaryExplosionFX>();
+            fxComp.PlayExplosion(explosionRadius);
+        }
+
+        // 3. 파편 로직
+        if (bombStage >= 1)
+        {
+            for (int i = 0; i < 8; i++)
             {
-                enemy.TakeDamage(damage);
+                Transform fragment = GameManager.instance.pool.Get(prefabId).transform;
+                fragment.position = transform.position;
+                Vector3 dir = Quaternion.Euler(0, 0, i * 45) * Vector3.up;
+                fragment.GetComponent<Bullet>().Init(damage * 0.5f, 0, dir, transform.position, 0, prefabId);
             }
         }
 
-        // [이펙트 비주얼 교체] 수류탄이 커지는 대신, 메모리에서 직접 그린 이쁜 오렌지빛 불꽃 원이 펼쳐지도록 호출합니다.
-        GameObject fxObject = new GameObject("TemporaryExplosionVFX");
-        fxObject.transform.position = transform.position;
-        TemporaryExplosionFX fxComp = fxObject.AddComponent<TemporaryExplosionFX>();
-        
-        // 폭발 스케일을 반경 크기와 정확하게 동조시킵니다 (기존의 과한 1.8배에서 1.05배 수준으로 축소)
-        fxComp.PlayExplosion(explosionRadius);
+        // 4. 불바다 로직 및 정리
+        if (bombStage >= 2 && fireZonePrefab != null)
+        {
+            GameObject fireZone = Instantiate(fireZonePrefab, transform.position, Quaternion.identity);
+            Destroy(fireZone, 3f);
+        }
 
-        // 2. 효과음 재생
-        AudioManager.instance.PlaySfx(AudioManager.Sfx.Dead); // 폭발 사운드 대용 활용
-
-        // 3. 탄환 객체 리셋 및 풀 반입
+        AudioManager.instance.PlaySfx(AudioManager.Sfx.Dead);
         rigid.velocity = Vector2.zero;
         isBomb = false;
         gameObject.SetActive(false);

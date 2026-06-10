@@ -41,7 +41,54 @@ public class Spawner : MonoBehaviour
             enemy.GetComponent<Enemy>().Init(spawnData[level]);  // 오브젝트 풀에서 가져온 오브젝트에서 Enemy컴포넌트로 접근
             // 새로 작성한 함수를 호출하고 소환데이터 인자값 전달
         }
+
+            if (!GameManager.instance.isLive)
+            return;
+
+        // 현재 플레이 경과 시간이 설정된 Max Game Time을 넘어섰을 때
+        if (GameManager.instance.gameTime >= GameManager.instance.maxGameTime)
+        {
+            // 1. 일반 몬스터의 소출 타이머 연산을 강제 봉쇄하여 잡몹 출현 중단
+            timer = 0f; 
+
+            // 2. 보스 몬스터가 아직 맵에 소환되지 않았다면, 단 1회 보스 스폰 트리거 실행
+            if (!hasBossSpawned)
+            {
+                SpawnBossMonster();
+            }
+            return;
+        }
     }
+    // Spawner.cs 혹은 GameManager.cs 소환 제어부의 예시 흐름
+
+bool hasBossSpawned = false;
+void SpawnBossMonster()
+{
+    hasBossSpawned = true;
+
+    // 1. 오브젝트 풀러에서 보스 외형 애니메이터가 들어갈 수 있는 Enemy 인스턴스를 하나 꺼냅니다.
+    GameObject boss = GameManager.instance.pool.Get(0); // 0번 풀 재사용
+    if (boss == null) return;
+
+    // 2. 캐릭터의 가시 바깥 근처(약 12유닛 지점)로 소환 위치 연산
+    Vector3 playerPos = GameManager.instance.player.transform.position;
+    boss.transform.position = playerPos + new Vector3(12f, 0f, 0f);
+
+    Enemy enemyComponent = boss.GetComponent<Enemy>();
+    if (enemyComponent != null)
+    {
+        // 3. 보스 전용 스펙 데이터 초기화 전달
+        SpawnData bossData = new SpawnData();
+        bossData.spriteType = 3;       // 보스 전용 애니메이터 컨트롤러 배열 인덱스 번호 입력 (예: 3)
+        bossData.healthPoint = 5000f;  // 압도적인 레이드 보스 전용 고체력 부여
+        bossData.speed = 1.0f;         // 위엄 있고 묵직한 이속 설정
+
+        enemyComponent.Init(bossData);
+
+        // 4. 보스 몬스터의 몸체 크기(Scale)를 3배 불려서 레이드의 웅장함을 살립니다!
+        boss.transform.localScale = Vector3.one * 3.0f;
+    }
+}
 }
 
 [System.Serializable]   // Serializable : 직렬화, 개체를 저장 또는 전송하기위해 변환
@@ -52,3 +99,4 @@ public class SpawnData  // 새로운 클래스 선언
     public float healthPoint;   // 체력
     public float speed; // 속도
 }
+
