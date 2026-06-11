@@ -5,7 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "Item", menuName = "Scriptble Object/ItemData")]   // 커스텀 메뉴를 생성하는 속성
 public class ItemData : ScriptableObject
 {
-    public enum ItemType { Melee, Range, Glove, Shoe, Heal }    // enum으로 아이템 타입 배열 생성
+    public enum ItemType { Melee, Range, Glove, Shoe, Heal, Bomb }    // enum으로 아이템 타입 배열 생성
 
     [Header("# Main Info")]
     public ItemType itemType;
@@ -21,10 +21,13 @@ public class ItemData : ScriptableObject
     public int baseCount;   // 0레벨 관통력 or 근접무기 갯수를 저장할 변수
     public float[] damages;
     public int[] counts;
+    public float[] speeds; // 레벨별 연사속도
 
     [Header("# Weapon")]
     public GameObject projectile;
     public Sprite hand; // 스크립트블 오브젝트에서 손 스프라이트를 담을 속성 추가
+    // [추가] 수류탄의 레벨/단계별 고유 속도 배열
+
 
     // [초월 스프라이트 진화용 추가 배열]
     // 유니티 인스펙터에서 이 배열에 이미지를 채워 넣습니다.
@@ -46,4 +49,5 @@ public class ItemData : ScriptableObject
     [Tooltip("초월 단계별 전용 설명글을 순서대로 기입해 주세요.")]
     [TextArea]
     public string[] transcendenceDescs;
+    
 }

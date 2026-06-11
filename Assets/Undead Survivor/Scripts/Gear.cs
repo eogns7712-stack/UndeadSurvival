@@ -58,6 +58,14 @@ public class Gear : MonoBehaviour
                     break;
             }
         }
+        
+        // 신규무기 수류탄에도 장갑의 공격속도 적용
+        Bomb[] bombs = transform.parent.GetComponentsInChildren<Bomb>();
+
+        foreach(Bomb bomb in bombs)
+        {
+            bomb.ApplyGear(rate);
+        }
     }
 
     void SpeedUp()

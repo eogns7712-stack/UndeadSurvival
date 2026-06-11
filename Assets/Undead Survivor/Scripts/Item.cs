@@ -11,6 +11,7 @@ public class Item : MonoBehaviour
     public ItemData data;   
     public int level;
     public Weapon weapon;
+    public Bomb bomb;
     public Gear gear;
 
     Image icon;
@@ -135,6 +136,7 @@ public class Item : MonoBehaviour
             {
                 case ItemData.ItemType.Melee:   // 무기 타입의 경우
                 case ItemData.ItemType.Range:
+                case ItemData.ItemType.Bomb:
                     textDesc.text = string.Format(data.itemDesc, data.damages[level] * 100, data.counts[level]);    // 데미지 상승량을 보여주기 위해 *100
                     break;
 
@@ -156,6 +158,12 @@ public class Item : MonoBehaviour
         {
             case ItemData.ItemType.Melee:
             case ItemData.ItemType.Range:
+                if (data.itemId == 4)
+                {
+                    SelectBomb();
+                    break;
+                }
+
                 if (level == 0)
                 {
                     GameObject newWeapon = new GameObject();
@@ -182,6 +190,10 @@ public class Item : MonoBehaviour
                     weapon.LevelUp(nextDamage,nextCount);
                 }
                 level ++;
+                break;
+
+            case ItemData.ItemType.Bomb:
+                SelectBomb();
                 break;
 
             case ItemData.ItemType.Glove:
@@ -216,5 +228,35 @@ public class Item : MonoBehaviour
         
         // 효과음 재생
         AudioManager.instance.PlaySfx(AudioManager.Sfx.Select);
+    }
+
+    void SelectBomb()
+    {
+        if (level == 0)
+        {
+            GameObject newBomb = new GameObject();
+            bomb = newBomb.AddComponent<Bomb>();
+            bomb.Init(data);
+        }
+        else if (level >= data.damages.Length)
+        {
+            // [추가] 무기 최대 레벨에 도달했을 시 추가 무한 성장 초월 강화 로직 적용
+            if (bomb != null)
+            {
+                bomb.MasterUpgrade(0.12f, 1); // 대미지 12% 누적 합산 및 수량 1개 증가
+            }
+        }
+        else
+        {
+            float nextDamage = data.baseDamage;
+            int nextCount = 0;
+            
+            // 이 아래부분에서 스크랩터블 오브젝트에서 작성한 아이템 데이터의 레벨당 증가값을 + 혹은 * 로 지정할 수 있음
+            nextDamage += data.baseDamage * data.damages[level];
+            nextCount += data.counts[level];
+
+            bomb.LevelUp(nextDamage,nextCount);
+        }
+        level ++;
     }
 }

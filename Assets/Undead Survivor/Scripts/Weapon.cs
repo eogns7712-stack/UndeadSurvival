@@ -10,37 +10,7 @@ public class Weapon : MonoBehaviour
     public int prefabId;
     public float damage;
     public int count;
-
-    // [버그 수정 완료] 외부 기어(Glove) 스크립트가 default 분기로 연사속도를 멋대로 덮어씌우는 현상을 원천 방어하기 위해
-    // speed 변수를 스마트 프로퍼티로 선언하여 무기 고유의 공속 기획 밸런스를 철저히 수호합니다.
-    private float _speed;
-    public float speed
-    {
-        get { return _speed; }
-        set
-        {
-            if (id == 4)
-            {
-                // 수류탄은 외부 Glove 오버라이트를 완전히 무시하고 고유의 묵직한 속도를 고정 유지합니다.
-                _speed = 1.8f * Character.WeaponRate;
-            }
-            else if (id == 1)
-            {
-                // 총 또한 외부 Glove 오버라이트를 방지하고, 초월 단계별 맞춤 속도를 안전하게 고정합니다.
-                int stage = CurrentStage;
-                if (stage == 1) // M1 라이플: 초고속 난사
-                    _speed = 0.22f * Character.WeaponRate;
-                else if (stage >= 2) // M2 샷건: 묵직한 산탄
-                    _speed = 1.35f * Character.WeaponRate;
-                else // 기본 총
-                    _speed = 0.5f * Character.WeaponRate;
-            }
-            else
-            {
-                _speed = value;
-            }
-        }
-    }
+    public float speed;
 
     float timer;
     Player player;  // Player의 자식 오브젝트를 편히 불러오기 위한 player변수 선언
@@ -78,13 +48,7 @@ public class Weapon : MonoBehaviour
 
                 break;
 
-            case 4 :    // [추가] 무기ID 4 : 폭탄 던지기 무기 (신규 무기)
-                timer += Time.deltaTime;
-                if (timer > speed)
-                {
-                    timer = 0f;
-                    FireBomb();
-                }
+            case 4 :
                 break;
 
             default :   // 그외 나머지 경우가 있다면 default ~ break으로 감싸기
@@ -110,14 +74,6 @@ public class Weapon : MonoBehaviour
             // 총은 별도 맞춤 함수를 통해 밸런스를 적용하므로 무조건 누적 가산 연산을 분기 격리합니다.
             UpdateGunTranscendenceBalance();
         }
-        else if (id == 4)
-        {
-            // 수류탄의 초월 시에는 무기 대미지 가산만 진행하고, 공속이 총알처럼 빨라지는 현상을 완벽 차단합니다.
-            damage += damage * damageMultiplier;
-            count += extraCount;
-            // 수류탄 고유의 묵직한 투척 속도 제약 유지
-            ApplyGear(); 
-        }
         else
         {
             damage += damage * damageMultiplier; // 일반 무기는 기존 규칙대로 데미지 증가율 누적
@@ -128,7 +84,7 @@ public class Weapon : MonoBehaviour
         // [진화 이미지 교체] 1차 초월(M1)시 갈퀴/라이플, 2차 초월(M2)시 낫/샷건 등으로 진화
         UpdateEvolutionVisual();
 
-        // 회전형 무기의 경우 즉시 재배치 필요
+        // 회전형 무기인 경우 즉시 재배치 필요
         if (id == 0)
         {
             Batch();
@@ -194,9 +150,6 @@ public class Weapon : MonoBehaviour
             case 0: // 근접 공전 삽
                 speed = 150 * Character.WeaponSpeed;
                 Batch();
-                break;
-            case 4: // 수류탄 투척 연사력 지연 고정
-                speed = 1.8f * Character.WeaponRate; // 묵직하고 신중하게 던지도록 쿨다운 속도 제어
                 break;
             case 1: // 원거리 총
                 int stage = CurrentStage;
@@ -339,6 +292,12 @@ public class Weapon : MonoBehaviour
                 bullet.rotation = Quaternion.FromToRotation(Vector3.up, rotDir);
 
                 Bullet bulletComponent = bullet.GetComponent<Bullet>();
+                if (bulletComponent == null)
+                {
+                    bullet.gameObject.SetActive(false);
+                    continue;
+                }
+
                 bulletComponent.Init(damage, 1, rotDir, transform.position); // 관통력 1 보정
 
                 // 탄환 이미지 진화형 샷건 스프라이트로 치환 적용
@@ -362,7 +321,14 @@ public class Weapon : MonoBehaviour
             bullet.rotation = Quaternion.FromToRotation(Vector3.up, dir); // Quaternion.FromToRotation(시작방향, 목표방향) : 지정된 축을 중심으로 목표를 향해 회전하는 함수
             
             // Bullet.cs 에 플레이어 위치를 전달하여 최대 사거리 제한을 연산하도록 초기화
-            bullet.GetComponent<Bullet>().Init(damage, count, dir, transform.position); 
+            Bullet bulletComponent = bullet.GetComponent<Bullet>();
+            if (bulletComponent == null)
+            {
+                bullet.gameObject.SetActive(false);
+                return;
+            }
+
+            bulletComponent.Init(damage, count, dir, transform.position); 
 
             // [초월 비주얼 반영] 사출되는 원거리 총알 이미지도 진화형으로 교체
             int evolutionIndex = masterUpgradeCount - 1;
@@ -375,37 +341,6 @@ public class Weapon : MonoBehaviour
                     bRenderer.sprite = projectileSprite;
                 }
             }
-        }
-
-        AudioManager.instance.PlaySfx(AudioManager.Sfx.Range); // 원거리 무기 사출시 효과음 재생
-    }
-
-    void FireBomb() // [추가] 폭탄 무기 발사 메커니즘
-    {
-
-        // 타겟이 있으면 타겟 방향, 없으면 플레이어가 바라보는 앞 방향으로 투척
-        Vector3 targetPos = player.scanner.nearestTarget ? player.scanner.nearestTarget.position : 
-                            transform.position + (player.inputVec != Vector2.zero ? (Vector3)player.inputVec.normalized * 3f : Vector3.up * 3f);
-
-        Vector3 dir = (targetPos - transform.position).normalized;
-
-        Transform bomb = GameManager.instance.pool.Get(prefabId).transform;
-        bomb.position = transform.position;
-
-        // Bullet.cs 의 Init 시점에 폭발물 플래그가 동작하도록 설정
-        Bullet bombBullet = bomb.GetComponent<Bullet>();
-        if (bombBullet != null)
-        {
-            int currentStage = 0;
-            if (masterUpgradeCount >= 6) currentStage = 2;
-            else if (masterUpgradeCount >= 3) currentStage = 1;
-
-            bombBullet.isBomb = true;
-            // 폭탄은 관통을 0으로 설정하여 닿자마자 터지게 유도
-            bombBullet.Init(damage, 0, dir, transform.position, currentStage, prefabId);
-            
-            // 속도 조절 (너무 빠르지 않게)
-            bombBullet.GetComponent<Rigidbody2D>().velocity = dir * 5f; 
         }
 
         AudioManager.instance.PlaySfx(AudioManager.Sfx.Range); // 원거리 무기 사출시 효과음 재생
