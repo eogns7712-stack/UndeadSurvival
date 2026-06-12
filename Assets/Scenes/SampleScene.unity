@@ -7732,7 +7732,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isLeft: 0
-  isBombHand: 0
+  isBombHand: 1
   spriter: {fileID: 639262141}
 --- !u!212 &639262141
 SpriteRenderer:
@@ -23128,10 +23128,11 @@ MonoBehaviour:
   - {fileID: 3155980304855282745, guid: 41d6f1f9ec8d11149b20fef3833ab6a1, type: 3}
   - {fileID: 4377817389225694762, guid: 2c78bb2556a3e5140a02cb2440db3c9e, type: 3}
   - {fileID: 9045947043296347826, guid: 15d8b3901cbf86f40ac2a7845979364d, type: 3}
-  - {fileID: 2256756539837181751, guid: a377a6a96f52a864badfbc814f74e11a, type: 3}
+  - {fileID: 5752463565682256461, guid: be8ce307ce6d4184f9d540a0ff876af3, type: 3}
   - {fileID: 9045947043296347826, guid: 991b18432cfcb4c4cabda7239ce9a72e, type: 3}
   - {fileID: 4768502021836437090, guid: 3b788f60271f3ba499988c4fcfa5208c, type: 3}
   - {fileID: 4505770737344428111, guid: 1d01c34289c777c4591e1d03e0ed0815, type: 3}
+  - {fileID: 4608190910056594871, guid: cef7aacf227010a409ca53330fc42863, type: 3}
 --- !u!4 &1808324109
 Transform:
   m_ObjectHideFlags: 0

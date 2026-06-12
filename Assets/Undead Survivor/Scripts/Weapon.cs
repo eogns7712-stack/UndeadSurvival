@@ -13,6 +13,7 @@ public class Weapon : MonoBehaviour
     public float speed;
 
     float timer;
+    float gearRate;
     Player player;  // Player의 자식 오브젝트를 편히 불러오기 위한 player변수 선언
     public int masterUpgradeCount = 0; // [추가] 무기 한계돌파(최대 레벨 이후 추가 강화) 횟수 기록
 
@@ -72,7 +73,11 @@ public class Weapon : MonoBehaviour
         if (id == 1)
         {
             // 총은 별도 맞춤 함수를 통해 밸런스를 적용하므로 무조건 누적 가산 연산을 분기 격리합니다.
-            UpdateGunTranscendenceBalance();
+            UpdateGunTranscendenceBalance(damageMultiplier, extraCount);
+        }
+        else if (id == 0)
+        {
+            damage += damage * damageMultiplier;
         }
         else
         {
@@ -92,22 +97,42 @@ public class Weapon : MonoBehaviour
     }
 
     // [추가] 총(itemId == 1)의 마스터 단계별(M1 라이플, M2 샷건) 전용 밸런스 튜닝
-    void UpdateGunTranscendenceBalance()
+    void UpdateGunTranscendenceBalance(float damageMultiplier, int extraCount)
     {
+        if (originData == null || originData.damages.Length == 0)
+            return;
+
         int stage = CurrentStage;
+        int stageLevel = ((masterUpgradeCount - 1) % originData.damages.Length) + 1;
         if (stage == 1) // 1단계 초월: 라이플 진화
         {
             // 공격력은 줄어들고 연사속도는 비약적으로 가증
-            damage = originData.baseDamage * 0.7f * Character.Damage; // 공격력 30% 감산
+            if (stageLevel == 1)
+            {
+                damage *= 0.7f;
+            }
+            else
+            {
+                damage += damage * damageMultiplier;
+                count += extraCount;
+            }
             speed = 0.22f * Character.WeaponRate;                    // 연사 쿨타임 대폭 감소 (고속 연사)
-            count = originData.baseCount + Character.Count;          // 기본 발사수 유지
+            ApplyGear();
         }
         else if (stage >= 2) // 2단계 초월: 샷건 최종 단계
         {
             // 공격력이 대폭 상승하고 연사속도 감소 + 격발 시 3발 분산 구현을 위한 쿨타임 증가
-            damage = originData.baseDamage * 2.2f * Character.Damage; // 데미지 120% 폭등
+            if (stageLevel == 1)
+            {
+                damage *= 2.2f;
+            }
+            else
+            {
+                damage += damage * damageMultiplier;
+            }
             speed = 1.35f * Character.WeaponRate;                    // 연사 속도 대폭 감소 (묵직한 사격)
             count = 3;                                               // 발사 수 강제 3발 (산탄 구현용)
+            ApplyGear();
         }
     }
 
@@ -118,9 +143,9 @@ public class Weapon : MonoBehaviour
 
         // 초월 차수에 매칭되는 진화 스프라이트가 존재하는지 판별
         // index 0: M1 진화형, index 1: M2 진화형 등 (ItemData의 customEvolutions 배열 참고)
-        int evolutionIndex = masterUpgradeCount - 1;
+        int evolutionIndex = CurrentStage - 1;
 
-        if (originData.customEvolutions != null && evolutionIndex < originData.customEvolutions.Length)
+        if (originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
         {
             Sprite nextSprite = originData.customEvolutions[evolutionIndex];
             if (nextSprite != null)
@@ -130,6 +155,7 @@ public class Weapon : MonoBehaviour
                 if (hand != null && hand.spriter != null)
                 {
                     hand.spriter.sprite = nextSprite;
+                    hand.spriter.transform.localScale = Vector3.one;
                 }
 
                 // 2. 만약 무기 오브젝트 자체에 렌더러가 직접 달린 형태라면 이미지 변경
@@ -149,6 +175,7 @@ public class Weapon : MonoBehaviour
         {
             case 0: // 근접 공전 삽
                 speed = 150 * Character.WeaponSpeed;
+                speed += speed * gearRate;
                 Batch();
                 break;
             case 1: // 원거리 총
@@ -165,11 +192,19 @@ public class Weapon : MonoBehaviour
                 {
                     speed = 0.5f * Character.WeaponRate;
                 }
+                speed *= 1f - gearRate;
                 break;
             default:
                 speed = 0.5f * Character.WeaponRate;
+                speed *= 1f - gearRate;
                 break;
         }
+    }
+
+    public void ApplyGear(float rate)
+    {
+        gearRate = rate;
+        ApplyGear();
     }
 
     public void LevelUp(float damage, int count)
@@ -212,6 +247,7 @@ public class Weapon : MonoBehaviour
         // Hand set
         Hand hand = player.hands[(int)data.itemType];   // enum값 itemType 값 앞에 int타입을 작성해 강제 형변환, 근거리(Melee)=0, 원거리(Range)=1
         hand.spriter.sprite = data.hand;    // 스크립트블 오브젝트의 데이터로 스프라이트 적용
+        hand.spriter.transform.localScale = Vector3.one;
         hand.gameObject.SetActive(true);
 
         player.BroadcastMessage("ApplyGear",SendMessageOptions.DontRequireReceiver); // BroadcastMessage : 특정 함수 호출을 모든 자식에게 방송하는 함수, 나중에 추가된 무기에도 강화된 값을 적용하기 위함
@@ -244,7 +280,7 @@ public class Weapon : MonoBehaviour
             bullet.GetComponent<Bullet>().Init(damage, -100, Vector3.zero); // -100 is Infinity Per.
             
             // [초월 투사체 분리 반영] 사출되는 투사체 전용 이미지 등록 체크
-            int evolutionIndex = masterUpgradeCount - 1;
+            int evolutionIndex = CurrentStage - 1;
             if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
             {
                 Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
@@ -301,7 +337,7 @@ public class Weapon : MonoBehaviour
                 bulletComponent.Init(damage, 1, rotDir, transform.position); // 관통력 1 보정
 
                 // 탄환 이미지 진화형 샷건 스프라이트로 치환 적용
-                int evolutionIndex = masterUpgradeCount - 1;
+                int evolutionIndex = CurrentStage - 1;
                 if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
                 {
                     Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
@@ -331,7 +367,7 @@ public class Weapon : MonoBehaviour
             bulletComponent.Init(damage, count, dir, transform.position); 
 
             // [초월 비주얼 반영] 사출되는 원거리 총알 이미지도 진화형으로 교체
-            int evolutionIndex = masterUpgradeCount - 1;
+            int evolutionIndex = CurrentStage - 1;
             if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
             {
                 Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];

@@ -56,6 +56,7 @@ public class Item : MonoBehaviour
             if (data.itemId == 0) // 근접무기 삽
             {
                 evolutionStepName = (stage == 1) ? " [M1 갈퀴]" : " [M2 낫]";
+                displayCount = 0;
             }
             else if (data.itemId == 1) // 원거리무기 총
             {
@@ -237,6 +238,7 @@ public class Item : MonoBehaviour
             GameObject newBomb = new GameObject();
             bomb = newBomb.AddComponent<Bomb>();
             bomb.Init(data);
+            Hand.SetBombHandActive(GameManager.instance.player, true);
         }
         else if (level >= data.damages.Length)
         {

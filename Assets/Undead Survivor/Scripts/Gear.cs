@@ -46,20 +46,9 @@ public class Gear : MonoBehaviour
         
         foreach(Weapon weapon in weapons)   // foreach문으로 Weapon배열에 들어있는 weapons를 하나씩 순회하면서 타입에 따라 속도올리기
         {
-            switch (weapon.id)
-            {
-                case 0 :
-                    float speed = 150 * Character.WeaponSpeed;  //Gear.cs 의 장갑 획득으로 인한 회전속도와 연사력에도 Player의 특성이 반영하도록 설정
-                    weapon.speed = speed + (speed * rate);
-                    break;
-                default :
-                    speed = 0.5f * Character.WeaponRate;
-                    weapon.speed = speed * (1f - rate);
-                    break;
-            }
+            weapon.ApplyGear(rate);
         }
-        
-        // 신규무기 수류탄에도 장갑의 공격속도 적용
+
         Bomb[] bombs = transform.parent.GetComponentsInChildren<Bomb>();
 
         foreach(Bomb bomb in bombs)

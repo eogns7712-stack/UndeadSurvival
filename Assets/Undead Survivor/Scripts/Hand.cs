@@ -10,34 +10,35 @@ public class Hand : MonoBehaviour
     public SpriteRenderer spriter;
     
     SpriteRenderer player;
-    Player playerComponent;
     // Player의 스프라이트렌더러 변수 선언 및 초기화
     
     Vector3 rightPos = new Vector3(0.35f, -0.15f, 0);
     Vector3 rightPosReverse = new Vector3(-0.15f, -0.15f, 0);
-    Quaternion leftRot = Quaternion.Euler(0, 0, -35);  // 왼손의 각도 형태를 Quaternion으로 저장
+    Vector3 bombPos = new Vector3(-0.15f, -0.4f, 0);    // 수류탄 전용 위치 Vector
+    Quaternion leftRot = Quaternion.Euler(0, 0, -35);  // 왼손의 각 형태를 Quaternion으로 저장
     Quaternion leftRotReverse = Quaternion.Euler(0, 0, -135);
 
     void Awake()
     {
-        player = GetComponentsInParent<SpriteRenderer>()[1];    // [0]은 자기자신(hand), [1]은 Player
-        playerComponent = GetComponentInParent<Player>();
+        player = GetComponentsInParent<SpriteRenderer>()[1];    // [0]은 자기자신(hand), [1]이 Player
     }
 
     void LateUpdate()
     {
-        bool isReverse = player.flipX;  // Player의 반전상태를 지정 변수에 저장
-
-        if (isBombHand && spriter != null)
-        {
-            spriter.enabled = HasBombWeapon();
-        }
+        bool isReverse = player.flipX;  // Player의 반전상태를 지역변수에 저장
 
         if (isLeft) // 근접무기의 경우
         {
             transform.localRotation = isReverse ? leftRotReverse : leftRot; // 왼손회전은 localRotation 사용
             spriter.flipY = isReverse;
             spriter.sortingOrder = isReverse ? 4 : 6;
+        }
+        else if (isBombHand)   // 수류탄 무기
+        {
+            transform.localPosition = isReverse ? bombPos : rightPos;
+            transform.localRotation = isReverse ? leftRotReverse : leftRot;
+            spriter.flipY = isReverse;
+            spriter.sortingOrder = 4;
         }
         else    // 원거리 무기
         {
@@ -47,18 +48,19 @@ public class Hand : MonoBehaviour
         }
     }
 
-    bool HasBombWeapon()
+    public static void SetBombHandActive(Player owner, bool active)
     {
-        if (playerComponent == null)
-            return false;
+        if (owner == null)
+            return;
 
-        Bomb[] bombs = playerComponent.GetComponentsInChildren<Bomb>();
-        foreach (Bomb bomb in bombs)
+        Hand[] hands = owner.GetComponentsInChildren<Hand>(true);
+        foreach (Hand hand in hands)
         {
-            if (bomb != null && bomb.originData != null)
-                return true;
+            if (hand != null && hand.isBombHand)
+            {
+                hand.gameObject.SetActive(active);
+            }
         }
-
-        return false;
     }
+
 }

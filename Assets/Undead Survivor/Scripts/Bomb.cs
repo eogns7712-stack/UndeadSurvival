@@ -14,6 +14,8 @@ public class Bomb : MonoBehaviour
 
     [Header("# Weapon")]
     public int prefabId;
+    public int fragmentPrefabId;
+    public int explosionFxPrefabId = -1;
     public float damage;
     public int masterUpgradeCount;
     public ItemData originData;
@@ -394,27 +396,31 @@ public class Bomb : MonoBehaviour
         for (int i = 0; i < fragmentCount; i++)
         {
             Vector3 dir = Quaternion.Euler(0, 0, i * (360f / fragmentCount)) * Vector3.up;
-            GameObject fragment = new GameObject("BombFragment");
+            GameObject fragment = GameManager.instance.pool.Get(fragmentPrefabId);
             fragment.transform.position = transform.position + dir * FragmentSpawnOffset;
             fragment.transform.rotation = Quaternion.FromToRotation(Vector3.up, dir);
             fragment.transform.localScale = Vector3.one * FragmentVisualScale;
 
             SpriteRenderer sourceRenderer = GetComponent<SpriteRenderer>();
-            SpriteRenderer fragmentRenderer = fragment.AddComponent<SpriteRenderer>();
-            fragmentRenderer.sprite = shardSprite != null ? shardSprite : (sourceRenderer != null ? sourceRenderer.sprite : null);
-            fragmentRenderer.sortingOrder = FragmentSortingOrder;
-            fragmentRenderer.color = Color.white;
+            SpriteRenderer fragmentRenderer = fragment.GetComponent<SpriteRenderer>();
+            if (fragmentRenderer != null)
+            {
+                fragmentRenderer.sprite = shardSprite != null ? shardSprite : (sourceRenderer != null ? sourceRenderer.sprite : null);
+                fragmentRenderer.sortingOrder = FragmentSortingOrder;
+                fragmentRenderer.color = Color.white;
+                fragmentRenderer.enabled = true;
+            }
 
-            Rigidbody2D fragmentRigid = fragment.AddComponent<Rigidbody2D>();
-            fragmentRigid.gravityScale = 0f;
-            fragmentRigid.velocity = dir.normalized * FragmentSpeed;
+            BombFragment fragmentLogic = fragment.GetComponent<BombFragment>();
+            if (fragmentLogic == null)
+            {
+                fragmentLogic = fragment.AddComponent<BombFragment>();
+            }
 
-            CircleCollider2D fragmentCollider = fragment.AddComponent<CircleCollider2D>();
-            fragmentCollider.isTrigger = true;
-            fragmentCollider.radius = 0.18f;
-
-            BombFragment fragmentLogic = fragment.AddComponent<BombFragment>();
-            fragmentLogic.Init(damage * FragmentDamageRate, FragmentPer + 1, FragmentRange, FragmentHitDelay);
+            if (fragmentLogic != null)
+            {
+                fragmentLogic.Init(damage * FragmentDamageRate, FragmentPer + 1, FragmentRange, FragmentHitDelay, dir);
+            }
         }
     }
 
@@ -435,6 +441,21 @@ public class Bomb : MonoBehaviour
 
     void PlayExplosionFx()
     {
+        if (explosionFxPrefabId >= 0)
+        {
+            GameObject fx = GameManager.instance.pool.Get(explosionFxPrefabId);
+            fx.transform.position = transform.position;
+
+            BombExplosionFX pooledFx = fx.GetComponent<BombExplosionFX>();
+            if (pooledFx == null)
+            {
+                pooledFx = fx.AddComponent<BombExplosionFX>();
+            }
+
+            pooledFx.PlayExplosion(explosionRadius);
+            return;
+        }
+
         GameObject fxObject = new GameObject("TemporaryExplosionVFX");
         fxObject.transform.position = transform.position;
         TemporaryExplosionFX fxComp = fxObject.AddComponent<TemporaryExplosionFX>();
@@ -513,67 +534,6 @@ public class TemporaryExplosionFX : MonoBehaviour
 
         if (elapsed >= maxDuration)
         {
-            Destroy(gameObject);
-        }
-    }
-}
-
-public class BombFragment : MonoBehaviour
-{
-    float damage;
-    int remainingHits;
-    float maxRange;
-    float hitDelayTimer;
-    Vector3 startPosition;
-    Rigidbody2D rigid;
-
-    public void Init(float damage, int remainingHits, float maxRange, float hitDelay)
-    {
-        this.damage = damage;
-        this.remainingHits = remainingHits;
-        this.maxRange = maxRange;
-        hitDelayTimer = hitDelay;
-        startPosition = transform.position;
-        rigid = GetComponent<Rigidbody2D>();
-    }
-
-    void Update()
-    {
-        if (!GameManager.instance.isLive)
-            return;
-
-        if (hitDelayTimer > 0f)
-        {
-            hitDelayTimer -= Time.deltaTime;
-        }
-
-        if (Vector3.Distance(startPosition, transform.position) >= maxRange)
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (hitDelayTimer > 0f)
-            return;
-
-        if (!collision.CompareTag("Enemy"))
-            return;
-
-        Enemy enemy = collision.GetComponent<Enemy>();
-        if (enemy != null)
-        {
-            enemy.TakeDamage(damage);
-        }
-
-        remainingHits--;
-        if (remainingHits <= 0)
-        {
-            if (rigid != null)
-            {
-                rigid.velocity = Vector2.zero;
-            }
             Destroy(gameObject);
         }
     }
