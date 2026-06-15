@@ -91,24 +91,33 @@ public class Player : MonoBehaviour
         // 단, 피격 데미지가 과도하게 빠르게 닳는 것을 방지하기 위해 무적 상태일 땐 피격 딜량을 절반 수준으로 조정하거나 정상 가산시킵니다.
         if (collision.gameObject.CompareTag("Enemy"))
         {
-            float damageFactor = isInvincible ? 0.4f : 1.0f; // 깜빡이는 동안에는 40% 데미지만 누적하여 밸런스 유지
-            GameManager.instance.health -= Time.deltaTime * 10f * damageFactor; // Time.deltaTime을 이용해 대미지 누적
+            Enemy enemy = collision.gameObject.GetComponent<Enemy>();
+            float damage = Time.deltaTime * 10f * (enemy != null && enemy.isBoss ? 2.0f : 1.0f);
+            TakeDamage(damage); // Time.deltaTime을 이용해 대미지 누적
+        }
+    }
 
-            // 아직 깜빡임 루틴이 돌고 있지 않을 때에만 새로운 깜빡임 연출 시작
-            if (!isInvincible)
-            {
-                StartCoroutine(FlashOnHitRoutine());
-            }
-            if (GameManager.instance.health < 0)    // Player 사망로직
-            {
-                for (int index = 2; index < transform.childCount; index++)  // childCount : 자식 오브젝트의 개수
-                {
-                    transform.GetChild(index).gameObject.SetActive(false);   // GetChild : 주어진 인덱스의 자식 오브젝트를 반환하는 함수
-                }   
+    public void TakeDamage(float damage)
+    {
+        if (!GameManager.instance.isLive)
+            return;
 
-                anim.SetTrigger("Dead");    // 애니메이터 SetTrigger 함수로 Dead 애니메이션 실행
-                GameManager.instance.GameOver();    // Player의 사망부분에서 게임오버 함수 호출
+        GameManager.instance.health -= damage;
+
+        // 아직 깜빡임 루틴이 돌고 있지 않을 때에만 새로운 깜빡임 연출 시작
+        if (!isInvincible)
+        {
+            StartCoroutine(FlashOnHitRoutine());
+        }
+        if (GameManager.instance.health < 0)    // Player 사망로직
+        {
+            for (int index = 2; index < transform.childCount; index++)  // childCount : 자식 오브젝트의 개수
+            {
+                transform.GetChild(index).gameObject.SetActive(false);   // GetChild : 주어진 인덱스의 자식 오브젝트를 반환하는 함수
             }
+
+            anim.SetTrigger("Dead");    // 애니메이터 SetTrigger 함수로 Dead 애니메이션 실행
+            GameManager.instance.GameOver();    // Player의 사망부분에서 게임오버 함수 호출
         }
     }
 

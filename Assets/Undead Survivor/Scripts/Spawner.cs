@@ -6,9 +6,13 @@ public class Spawner : MonoBehaviour
 {
     public Transform[] spawnPoint;    // 자식 오브젝트의 트랜스폼을 담을 배열변수 선언
     public SpawnData[] spawnData;    // 만든 클래스를 그대로 타입으로 활용해 배열변수 선언
+    public SpawnData bossData;
+    public int bossPoolId;
+    public float bossSpawnDistance = 8f;
     public float levelTime; // 소환 레벨 구간을 결정하는 변수 선언
     int level;  // 레벨 담당 변수 선언
     float timer;    // 소환 타이머를 위한 변수 선언
+    bool hasBossSpawned = false;
 
     void Awake()
     {
@@ -20,6 +24,18 @@ public class Spawner : MonoBehaviour
     {
         if (!GameManager.instance.isLive)
             return;
+
+        if (GameManager.instance.isBossBattle)
+        {
+            timer = 0f;
+            return;
+        }
+
+        if (GameManager.instance.gameTime >= GameManager.instance.maxGameTime)
+        {
+            timer = 0f;
+            return;
+        }
             
         timer += Time.deltaTime;    // 타이머 변수에 deltaTime 계속 더하기
         level = Mathf.Min(Mathf.FloorToInt(GameManager.instance.gameTime / levelTime), spawnData.Length - 1);
@@ -51,43 +67,51 @@ public class Spawner : MonoBehaviour
             // 1. 일반 몬스터의 소출 타이머 연산을 강제 봉쇄하여 잡몹 출현 중단
             timer = 0f; 
 
-            // 2. 보스 몬스터가 아직 맵에 소환되지 않았다면, 단 1회 보스 스폰 트리거 실행
-            if (!hasBossSpawned)
-            {
-                SpawnBossMonster();
-            }
             return;
         }
     }
     // Spawner.cs 혹은 GameManager.cs 소환 제어부의 예시 흐름
 
-bool hasBossSpawned = false;
-void SpawnBossMonster()
+public Enemy SpawnBossMonster()
 {
+    if (hasBossSpawned)
+        return null;
+
     hasBossSpawned = true;
 
     // 1. 오브젝트 풀러에서 보스 외형 애니메이터가 들어갈 수 있는 Enemy 인스턴스를 하나 꺼냅니다.
-    GameObject boss = GameManager.instance.pool.Get(0); // 0번 풀 재사용
-    if (boss == null) return;
+    GameObject boss = GameManager.instance.pool.Get(bossPoolId); // 0번 풀 재사용
+    if (boss == null) return null;
 
     // 2. 캐릭터의 가시 바깥 근처(약 12유닛 지점)로 소환 위치 연산
     Vector3 playerPos = GameManager.instance.player.transform.position;
-    boss.transform.position = playerPos + new Vector3(12f, 0f, 0f);
+    boss.transform.position = playerPos + new Vector3(bossSpawnDistance, 0f, 0f);
 
     Enemy enemyComponent = boss.GetComponent<Enemy>();
     if (enemyComponent != null)
     {
         // 3. 보스 전용 스펙 데이터 초기화 전달
-        SpawnData bossData = new SpawnData();
-        bossData.spriteType = 3;       // 보스 전용 애니메이터 컨트롤러 배열 인덱스 번호 입력 (예: 3)
-        bossData.healthPoint = 5000f;  // 압도적인 레이드 보스 전용 고체력 부여
-        bossData.speed = 1.0f;         // 위엄 있고 묵직한 이속 설정
+        if (bossData == null)
+        {
+            bossData = new SpawnData();
+            bossData.spriteType = 0;
+            bossData.healthPoint = 5000f;
+            bossData.speed = 1.0f;
+        }
+
+        bossData.isBoss = true;
+        if (bossData.scale <= 0f)
+        {
+            bossData.scale = 3.0f;
+        }
 
         enemyComponent.Init(bossData);
 
         // 4. 보스 몬스터의 몸체 크기(Scale)를 3배 불려서 레이드의 웅장함을 살립니다!
-        boss.transform.localScale = Vector3.one * 3.0f;
+        boss.transform.localScale = Vector3.one * bossData.scale;
     }
+
+    return enemyComponent;
 }
 }
 
@@ -98,5 +122,7 @@ public class SpawnData  // 새로운 클래스 선언
     public int spriteType;  // 속성 추가 : 스프라이트 타입
     public float healthPoint;   // 체력
     public float speed; // 속도
+    public bool isBoss;
+    public float scale = 1f;
 }
 

@@ -7,11 +7,13 @@ public class Enemy : MonoBehaviour
     public float speed;
     public float healthPoint;   // 현재 체력 변수 추가
     public float maxhealthPoint;    // 최대 체력 변수 추가
+    public bool isBoss;
     public RuntimeAnimatorController[] animCon; // Animator Controller를 여러개 사용하기 위함, 적 종류마다 다른 애니메이션을 적용하기 위함
     public Rigidbody2D target;  // 속도, 목표, 생존여부를 위한 변수
     
     // [추가] 최적화를 위한 플레이어와의 비활성 한계 거리 선언
     public float despawnDistance = 22f; // 플레이어로부터 이 거리 이상 멀어지면 스폰 포인트로 복귀
+    public float knockBackPower = 1.5f;
 
     // [추가] 드롭할 보상 오브젝트 프리팹 ID 번호 (PoolManager 인덱스 매칭)
     public int expGemPrefabId = 5;       // 경험치 보석 프리팹 풀 인덱스
@@ -25,6 +27,8 @@ public class Enemy : MonoBehaviour
     SpriteRenderer spriter;
     Animator anim;
     WaitForFixedUpdate wait;    // 다음 FixedUpdate가 될 때 까지 기다리는 변수 선언
+    Color defaultColor;
+    Coroutine bossHitFlashRoutine;
 
     void Awake()
     {   // 변수 초기화
@@ -33,6 +37,7 @@ public class Enemy : MonoBehaviour
         spriter = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
         wait = new WaitForFixedUpdate();
+        defaultColor = spriter.color;
     }
 
     void FixedUpdate()
@@ -40,7 +45,7 @@ public class Enemy : MonoBehaviour
         if (!GameManager.instance.isLive)
             return;
 
-        if (!isLive || anim.GetCurrentAnimatorStateInfo(0).IsName("Hit"))    // GetCurrentAnimatorStateInfo : 현재 재생되는 애니메이션 상태 정보를 가져오는 함수, IsName() : 해당 상태의 이름이 지정된 것과 같은지 확인하는 함수
+        if (!isLive || (!isBoss && anim.GetCurrentAnimatorStateInfo(0).IsName("Hit")))    // GetCurrentAnimatorStateInfo : 현재 재생되는 애니메이션 상태 정보를 가져오는 함수, IsName() : 해당 상태의 이름이 지정된 것과 같은지 확인하는 함수
                 // Enemy가 살아있지 않다면 or 현재 재생중인 애니메이션 상태의 이름이 'Hit'라면
             return;
         
@@ -51,7 +56,7 @@ public class Enemy : MonoBehaviour
 
         // [추가] 몬스터가 플레이어와 너무 멀어지면 플레이어 가시영역 밖 근처로 재생성 및 리스폰 위치 재배치
         float distanceToPlayer = Vector2.Distance(transform.position, GameManager.instance.player.transform.position);
-        if (distanceToPlayer > despawnDistance)
+        if (!isBoss && distanceToPlayer > despawnDistance)
         {
             RepositionNearPlayer();
         }
@@ -72,11 +77,26 @@ public class Enemy : MonoBehaviour
     public void TakeDamage(float damage)
     {
         healthPoint -= damage;
-        StartCoroutine(knockBack());
+        if (isBoss)
+        {
+            if (bossHitFlashRoutine != null)
+            {
+                StopCoroutine(bossHitFlashRoutine);
+                spriter.color = defaultColor;
+            }
+            bossHitFlashRoutine = StartCoroutine(BossHitFlash());
+        }
+        else
+        {
+            StartCoroutine(knockBack());
+        }
 
         if (healthPoint > 0)
         {
-            anim.SetTrigger("Hit");
+            if (!isBoss)
+            {
+                anim.SetTrigger("Hit");
+            }
             AudioManager.instance.PlaySfx(AudioManager.Sfx.Hit); // Enemy 피격시 효과음 재생
         }
         else
@@ -93,14 +113,22 @@ public class Enemy : MonoBehaviour
     void Die()
     {
         isLive = false; // 여러 로직을 결정하는 isLive 변수를 false로 변경
+        spriter.color = defaultColor;
         coll.enabled = false;   // 컴포넌트 비활성화는 enabled = false
         rigid.simulated = false;    // Rigidbody의 물리적 비활성화는 rigid.simulated = false
         spriter.sortingOrder = 1;   // Dead상태 Enemy의 Order in Layer 1로 변경
         anim.SetBool("Dead",true);  // Animator의 트리거가 bool로 되어있기 때문에 SetBool을 통해 Dead 상태로 변환
         GameManager.instance.kill++;
 
-        // [버그 수정 완료] 원본 유실되어 있던 DropRewards() 드랍 시스템 명확하게 가동! 보석이 100% 필드에 떨어집니다.
-        DropRewards();
+        if (isBoss)
+        {
+            GameManager.instance.BossDead(transform.position);
+        }
+        else
+        {
+            // [버그 수정 완료] 원본 유실되어 있던 DropRewards() 드랍 시스템 명확하게 가동! 보석이 100% 필드에 떨어집니다.
+            DropRewards();
+        }
 
         if (GameManager.instance.isLive)    // Enemy 사망 사운드는 게임종료시에는 나지 않도록 조건추가
             AudioManager.instance.PlaySfx(AudioManager.Sfx.Dead); // Enemy 사망시 효과음 재생
@@ -165,6 +193,7 @@ public class Enemy : MonoBehaviour
         coll.enabled = true;   // 컴포넌트 비활성화는 enabled = false
         rigid.simulated = true;    // Rigidbody의 물리적 비활성화는 rigid.simulated = false
         spriter.sortingOrder = 2;   // Dead상태 Enemy의 Order in Layer 1로 변경
+        spriter.color = defaultColor;
         anim.SetBool("Dead",false);  // Animator의 트리거가 bool로 되어있기 때문에 SetBool을 통해 Dead 상태로 변환  // enemy가 생성될 때 isLive 활성화
         healthPoint = maxhealthPoint;   // 현재체력을 최대체력값으로 변경
     }
@@ -175,11 +204,14 @@ public class Enemy : MonoBehaviour
         speed = data.speed;
         maxhealthPoint = data.healthPoint;
         healthPoint = data.healthPoint;
+        isBoss = data.isBoss;
+        transform.localScale = Vector3.one * (data.scale > 0f ? data.scale : 1f);
 
         isLive = true;
         coll.enabled = true;
         rigid.simulated = true;
         spriter.sortingOrder = 2;
+        spriter.color = defaultColor;
         anim.SetBool("Dead", false);
     }
 
@@ -204,6 +236,14 @@ public class Enemy : MonoBehaviour
         yield return wait;    // yield : 코루틴의 반환 키워드
         Vector3 playerPos = GameManager.instance.player.transform.position; // playerPos 변수에 GameManager에 있는 Player의 위치 저장
         Vector3 dirVec = transform.position - playerPos;    // 플레이어 기준의 반대방향 : Enemy의 현재위치 - 플레이어의 위치
-        rigid.AddForce(dirVec.normalized * 3, ForceMode2D.Impulse);  // AddForce 함수로 dirVec 방향으로 힘 가하기, 순간적인 힘이므로 ForceMode2D.Impulse 추가
+        rigid.AddForce(dirVec.normalized * knockBackPower, ForceMode2D.Impulse);  // AddForce 함수로 dirVec 방향으로 힘 가하기, 순간적인 힘이므로 ForceMode2D.Impulse 추가
+    }
+
+    IEnumerator BossHitFlash()
+    {
+        spriter.color = new Color(1f, 0.45f, 0.45f, 1f);
+        yield return new WaitForSeconds(0.05f);
+        spriter.color = defaultColor;
+        bossHitFlashRoutine = null;
     }
 }

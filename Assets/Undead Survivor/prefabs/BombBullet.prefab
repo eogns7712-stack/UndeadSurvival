@@ -164,11 +164,11 @@ MonoBehaviour:
   prefabId: 4
   fragmentPrefabId: 3
   explosionFxPrefabId: 7
+  fireZonePrefabId: 8
   damage: 0
   masterUpgradeCount: 0
   originData: {fileID: 11400000, guid: 609d6a1b2225fb14cbbc2db147edf332, type: 2}
-  maxRange: 5
-  explosionRadius: 2.5
+  maxRange: 6
+  explosionRadius: 2
   bombStage: 0
-  fireZonePrefab: {fileID: 0}
   shardSprite: {fileID: 0}

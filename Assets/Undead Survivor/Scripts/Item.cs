@@ -75,7 +75,7 @@ public class Item : MonoBehaviour
             }
             else if (data.itemId == 4) // [버그 수정 완료] 원거리무기 수류탄 분기 정식 연동!
             {
-                evolutionStepName = (stage == 1) ? " [M1 파편 수류탄]" : " [M2 소이 탄두]";
+                evolutionStepName = (stage == 1) ? " [M1 파편 수류탄]" : " [M2 소이 수류탄]";
                 
                 // 수류탄 초월 기획 전용 대칭 데이터 연산 기입
                 if (stage == 1)
@@ -125,7 +125,7 @@ public class Item : MonoBehaviour
             textLevel.text = $"M{stage} L.{displayLevel}";
             
             // 넓고 남는 공간이 많은 상단 이름칸 우측에 "[M1 라이플]" 등의 진화 단계를 조화롭게 결합시킵니다.
-            textName.text = data.itemName + evolutionStepName;
+            textName.text = evolutionStepName.Trim();
             textDesc.text = customDescription;
         }
         else

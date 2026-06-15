@@ -16,6 +16,7 @@ public class Bomb : MonoBehaviour
     public int prefabId;
     public int fragmentPrefabId;
     public int explosionFxPrefabId = -1;
+    public int fireZonePrefabId = -1;
     public float damage;
     public int masterUpgradeCount;
     public ItemData originData;
@@ -24,7 +25,6 @@ public class Bomb : MonoBehaviour
     public float maxRange = 5f;
     public float explosionRadius = 2.5f;
     public int bombStage;
-    public GameObject fireZonePrefab;
 
     [HideInInspector] public Sprite shardSprite;
 
@@ -426,40 +426,41 @@ public class Bomb : MonoBehaviour
 
     void SpawnFireZone()
     {
-        if (fireZonePrefab != null)
-        {
-            GameObject fireZone = Instantiate(fireZonePrefab, transform.position, Quaternion.identity);
-            Destroy(fireZone, 3f);
+        float fireDamage = damage * 0.25f;
+        float fireRadius = explosionRadius * 0.85f;
+        float fireDuration = 3f;
+
+        if (fireZonePrefabId < 0 || GameManager.instance.pool == null || fireZonePrefabId >= GameManager.instance.pool.prefabs.Length)
             return;
+
+        GameObject fireZone = GameManager.instance.pool.Get(fireZonePrefabId);
+        fireZone.transform.position = transform.position;
+        fireZone.transform.rotation = Quaternion.identity;
+
+        BombFireZone pooledZone = fireZone.GetComponent<BombFireZone>();
+        if (pooledZone == null)
+        {
+            pooledZone = fireZone.AddComponent<BombFireZone>();
         }
 
-        GameObject tempFireZone = new GameObject("TemporaryFireZone");
-        tempFireZone.transform.position = transform.position;
-        TemporaryFireZone zoneComp = tempFireZone.AddComponent<TemporaryFireZone>();
-        zoneComp.SetupZone(damage * 0.25f, explosionRadius * 0.85f, 3f);
+        pooledZone.SetupZone(fireDamage, fireRadius, fireDuration);
     }
 
     void PlayExplosionFx()
     {
-        if (explosionFxPrefabId >= 0)
-        {
-            GameObject fx = GameManager.instance.pool.Get(explosionFxPrefabId);
-            fx.transform.position = transform.position;
-
-            BombExplosionFX pooledFx = fx.GetComponent<BombExplosionFX>();
-            if (pooledFx == null)
-            {
-                pooledFx = fx.AddComponent<BombExplosionFX>();
-            }
-
-            pooledFx.PlayExplosion(explosionRadius);
+        if (explosionFxPrefabId < 0 || GameManager.instance.pool == null || explosionFxPrefabId >= GameManager.instance.pool.prefabs.Length)
             return;
+
+        GameObject fx = GameManager.instance.pool.Get(explosionFxPrefabId);
+        fx.transform.position = transform.position;
+
+        BombExplosionFX pooledFx = fx.GetComponent<BombExplosionFX>();
+        if (pooledFx == null)
+        {
+            pooledFx = fx.AddComponent<BombExplosionFX>();
         }
 
-        GameObject fxObject = new GameObject("TemporaryExplosionVFX");
-        fxObject.transform.position = transform.position;
-        TemporaryExplosionFX fxComp = fxObject.AddComponent<TemporaryExplosionFX>();
-        fxComp.PlayExplosion(explosionRadius);
+        pooledFx.PlayExplosion(explosionRadius);
     }
 
     void ReturnToPool()
@@ -471,156 +472,5 @@ public class Bomb : MonoBehaviour
 
         mode = BombMode.Idle;
         gameObject.SetActive(false);
-    }
-}
-
-public class TemporaryExplosionFX : MonoBehaviour
-{
-    SpriteRenderer sr;
-    float maxDuration = 0.22f;
-    float elapsed = 0f;
-    Vector3 maxScale;
-
-    public void PlayExplosion(float radius)
-    {
-        sr = gameObject.AddComponent<SpriteRenderer>();
-        sr.sprite = CreateCircleSprite();
-        sr.sortingOrder = 10;
-
-        transform.localScale = Vector3.one * 0.1f;
-        maxScale = Vector3.one * radius * 1.8f;
-    }
-
-    Sprite CreateCircleSprite()
-    {
-        int size = 128;
-        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        float center = size / 2f;
-        float radius = size / 2f - 4f;
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
-                if (dist <= radius)
-                {
-                    float alpha = Mathf.Clamp01((radius - dist) / 4.0f);
-                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
-                }
-                else
-                {
-                    texture.SetPixel(x, y, Color.clear);
-                }
-            }
-        }
-
-        texture.Apply();
-        return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-    }
-
-    void Update()
-    {
-        elapsed += Time.deltaTime;
-        float t = elapsed / maxDuration;
-
-        transform.localScale = Vector3.Lerp(Vector3.one * 0.1f, maxScale, Mathf.Sin(t * Mathf.PI * 0.5f));
-
-        if (sr != null)
-        {
-            float alpha = Mathf.Lerp(0.85f, 0f, t);
-            sr.color = new Color(1f, Mathf.Lerp(0.45f, 0.15f, t), 0.05f, alpha);
-        }
-
-        if (elapsed >= maxDuration)
-        {
-            Destroy(gameObject);
-        }
-    }
-}
-
-public class TemporaryFireZone : MonoBehaviour
-{
-    SpriteRenderer sr;
-    float damage;
-    float radius;
-    float duration;
-    float timer = 0f;
-    float tickTimer = 0f;
-    float tickRate = 0.5f;
-
-    public void SetupZone(float damage, float radius, float duration)
-    {
-        this.damage = damage;
-        this.radius = radius;
-        this.duration = duration;
-
-        sr = gameObject.AddComponent<SpriteRenderer>();
-        sr.sprite = CreateFireZoneSprite();
-        sr.sortingOrder = 4;
-
-        transform.localScale = Vector3.one * radius * 2f;
-    }
-
-    Sprite CreateFireZoneSprite()
-    {
-        int size = 128;
-        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        float center = size / 2f;
-        float r = size / 2f - 4f;
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
-                if (dist <= r)
-                {
-                    float alpha = Mathf.Clamp01((r - dist) / 12.0f) * 0.5f;
-                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
-                }
-                else
-                {
-                    texture.SetPixel(x, y, Color.clear);
-                }
-            }
-        }
-
-        texture.Apply();
-        return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-    }
-
-    void Update()
-    {
-        timer += Time.deltaTime;
-        if (timer >= duration)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        float beat = Mathf.PingPong(timer * 5f, 1f);
-        float scaleMultiplier = 1f + beat * 0.1f;
-        transform.localScale = Vector3.one * radius * 2f * scaleMultiplier;
-
-        if (sr != null)
-        {
-            sr.color = Color.Lerp(new Color(1f, 0.82f, 0f, 0.45f), new Color(1f, 0.35f, 0f, 0.3f), beat);
-        }
-
-        tickTimer += Time.deltaTime;
-        if (tickTimer < tickRate)
-            return;
-
-        tickTimer = 0f;
-        Collider2D[] targets = Physics2D.OverlapCircleAll(transform.position, radius, LayerMask.GetMask("Enemy"));
-        foreach (Collider2D target in targets)
-        {
-            Enemy enemy = target.GetComponent<Enemy>();
-            if (enemy != null)
-            {
-                enemy.TakeDamage(damage);
-            }
-        }
     }
 }

@@ -11,11 +11,16 @@ public class HUD : MonoBehaviour
 
     Text myText;
     Slider mySlider;
+    Color defaultTextColor;
     // 변수 선언 및 초기화
     void Awake()
     {
         myText = GetComponent<Text>();
         mySlider = GetComponent<Slider>();
+        if (myText != null)
+        {
+            defaultTextColor = myText.color;
+        }
     }
 
     void LateUpdate()   // LateUpdate사용 : UI는 보통 모든 게임 로직이 끝난 뒤 업데이트
@@ -39,10 +44,11 @@ public class HUD : MonoBehaviour
                 break;
 
             case InfoType.Time :
-                float remainTime = GameManager.instance.maxGameTime - GameManager.instance.gameTime;    // 남은 시간 구하기
+                float remainTime = GameManager.instance.isBossBattle ? GameManager.instance.bossTime : GameManager.instance.maxGameTime - GameManager.instance.gameTime;    // 남은 시간 구하기
                 int min = Mathf.FloorToInt(remainTime / 60);    // 60으로 나누어 분을 구하되 Mathf.FloorToInt()를 사용해 소수점 버리기
                 int sec = Mathf.FloorToInt(remainTime % 60); // % 60 : 60으로 나눈 나머지
                 myText.text = string.Format("{0:D2}:{1:D2}",min, sec);  // 이미 min과 sec을 구할때 소수점을 버려서 F0은 필요없음
+                myText.color = GameManager.instance.isBossBattle ? Color.red : defaultTextColor;
                 // D0, D1, D2.... : 자리수를 지정, 00:00 형태로 시간을 표시하기 때문에 2자리는 유지해야함
                 break;
 

@@ -164,7 +164,7 @@ MonoBehaviour:
   type: 0
   expValue: 1
   magnetSpeed: 8
-  magnetDistance: 1
+  magnetDistance: 1.5
   coinSprite: {fileID: 0}
   healPackSprite: {fileID: 0}
   magnetSprite: {fileID: 0}
