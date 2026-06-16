@@ -8,6 +8,7 @@ public class HUD : MonoBehaviour
 {
     public enum InfoType { Exp, Level, Kill, Time, Health} // 다루기 될 데이터를 열거형 enum으로 선언
     public InfoType type; // 선언한 열거형을 타입으로 변수 추가
+    public Text expText;
 
     Text myText;
     Slider mySlider;
@@ -29,8 +30,12 @@ public class HUD : MonoBehaviour
         {
             case InfoType.Exp : // 슬라이더에 적용할 값 : 현재경험치 / 최대경험치
                 float curExp = GameManager.instance.exp;
-                float maxExp = GameManager.instance.nextExp[Mathf.Min(GameManager.instance.level, GameManager.instance.nextExp.Length - 1)];    // Mathf.Min 함수를 사용해 최고 경험치를 그대로 사용하도록 변경 (영상12 40:40)
+                float maxExp = GameManager.instance.GetRequiredExp(GameManager.instance.level);    // Mathf.Min 함수를 사용해 최고 경험치를 그대로 사용하도록 변경 (영상12 40:40)
                 mySlider.value = curExp / maxExp;
+                if (expText != null)
+                {
+                    expText.text = string.Format("{0:F0} / {1:F0}", curExp, maxExp);
+                }
                 break;
 
             case InfoType.Level :

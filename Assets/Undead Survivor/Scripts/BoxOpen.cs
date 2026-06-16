@@ -37,6 +37,10 @@ public class BoxOpen : MonoBehaviour
         // 부딪힌 오브젝트의 태그가 "Player"이고, 상자가 아직 열리지 않은 상태라면
         if (collision.CompareTag("Player") && !isOpened)
         {
+            ItemPickup pickup = GetComponent<ItemPickup>();
+            if (pickup != null && !pickup.CanCollect())
+                return;
+
             OpenChest();
         }
     }

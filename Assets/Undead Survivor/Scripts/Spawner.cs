@@ -43,7 +43,7 @@ public class Spawner : MonoBehaviour
         // Mathf.FloorToInt : 소수점 아래는 버리고 Int형으로 바꾸는 함수
         // Mathf.CeilToInt : 소수점 아래를 올리고 Int형으로 바꾸는 함수
 
-         if (timer > spawnData[level].spawnTime) // 현재 레벨에 맞는 spawnData의 spawnTime값 사용
+         if (timer > spawnData[level].spawnTime * GameManager.instance.ShopEnemySpawnRate) // 현재 레벨에 맞는 spawnData의 spawnTime값 사용
         {
             timer = 0;  // 소환 후 timer=0 으로 초기화
             Spawn();

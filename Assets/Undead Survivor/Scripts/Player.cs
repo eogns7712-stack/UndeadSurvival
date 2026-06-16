@@ -48,8 +48,9 @@ public class Player : MonoBehaviour
     // [버그 방지 추가] 대기열에 경험치( pendingExp )가 적체되어 있다면, 프레임마다 안전하게 게임매니저에 가산
         if (pendingExp > 0)
         {
-            pendingExp--;
-            GameManager.instance.GetExp();
+            int amount = pendingExp;
+            pendingExp = 0;
+            GameManager.instance.GetExp(amount);
         }
     }
 

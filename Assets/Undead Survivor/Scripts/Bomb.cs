@@ -18,6 +18,7 @@ public class Bomb : MonoBehaviour
     public int explosionFxPrefabId = -1;
     public int fireZonePrefabId = -1;
     public float damage;
+    public float speed;
     public int masterUpgradeCount;
     public ItemData originData;
 
@@ -172,9 +173,26 @@ public class Bomb : MonoBehaviour
         }
 
         prefabId = FindPrefabId(data.projectile);
+        CopyProjectileSettings(data.projectile);
         ApplyGear();
 
         player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
+    }
+
+    void CopyProjectileSettings(GameObject projectile)
+    {
+        if (projectile == null)
+            return;
+
+        Bomb projectileBomb = projectile.GetComponent<Bomb>();
+        if (projectileBomb == null)
+            return;
+
+        fragmentPrefabId = projectileBomb.fragmentPrefabId;
+        explosionFxPrefabId = projectileBomb.explosionFxPrefabId;
+        fireZonePrefabId = projectileBomb.fireZonePrefabId;
+        explosionRadius = projectileBomb.explosionRadius;
+        maxRange = projectileBomb.maxRange;
     }
 
     public void LevelUp(float damage, int count)
@@ -205,6 +223,7 @@ public class Bomb : MonoBehaviour
     {
         float rate = Mathf.Clamp(gloveRate, 0f, 0.95f);
         cooldown = baseCooldown * Character.WeaponRate * (1f - rate);
+        speed = cooldown;
     }
 
     public void ApplyGear(float rate)
@@ -310,6 +329,9 @@ public class Bomb : MonoBehaviour
         }
 
         grenadeBomb.maxRange = throwRange;
+        grenadeBomb.fragmentPrefabId = fragmentPrefabId;
+        grenadeBomb.explosionFxPrefabId = explosionFxPrefabId;
+        grenadeBomb.fireZonePrefabId = fireZonePrefabId;
         grenadeBomb.InitProjectile(BombMode.Grenade, damage, dir, transform.position, CurrentStage, prefabId, 0, GetFragmentSprite());
 
         AudioManager.instance.PlaySfx(AudioManager.Sfx.Range);

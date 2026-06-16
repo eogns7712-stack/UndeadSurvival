@@ -47,6 +47,11 @@ public class ItemPickup : MonoBehaviour
         }
     }
 
+    public bool CanCollect()
+    {
+        return collectCooldown <= 0f;
+    }
+
     public void InitPickup(PickupType pickupType, float value)
     {
         this.type = pickupType;
@@ -75,16 +80,16 @@ public class ItemPickup : MonoBehaviour
         if (playerTransform == null || !GameManager.instance.isLive)
             return;
 
-        // 상자(Box)의 경우 애니메이션을 보며 제자리에서 먹어야 하므로 자석 당김 연산 제외
-        if (type == PickupType.RandomBox)
-            return;
-
         // [추가] 획득 및 끌림 쿨다운이 돌고 있다면 대기 (포물선 튕김 연출 보호용)
         if (collectCooldown > 0f)
         {
             collectCooldown -= Time.deltaTime;
             return;
         }
+
+        // 상자(Box)의 경우 애니메이션을 보며 제자리에서 먹어야 하므로 자석 당김 연산 제외
+        if (type == PickupType.RandomBox)
+            return;
 
         float distance = Vector3.Distance(transform.position, playerTransform.position);
 
@@ -139,7 +144,7 @@ public class ItemPickup : MonoBehaviour
                 // [버그 원천 차단] 금색 코인 대량 경험치도 플레이어 Exp Buffer에 안전 우회하여 레벨업 유실 방지!
                 if (GameManager.instance.player != null)
                 {
-                    GameManager.instance.player.pendingExp += 5;
+                    GameManager.instance.player.pendingExp += 10;
                 }
                 break;
 
@@ -232,7 +237,7 @@ public class ItemPickup : MonoBehaviour
         ItemPickup[] allPickups = FindObjectsOfType<ItemPickup>();
         foreach (ItemPickup item in allPickups)
         {
-            if (item.gameObject.activeSelf && item.type == PickupType.Exp)
+            if (item.gameObject.activeSelf && (item.type == PickupType.Exp || item.type == PickupType.Coin))
             {
                 item.isBeingAttracted = true; // 자성 원격 작동
             }

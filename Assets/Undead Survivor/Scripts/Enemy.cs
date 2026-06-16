@@ -122,10 +122,12 @@ public class Enemy : MonoBehaviour
 
         if (isBoss)
         {
+            GameManager.instance.AddShopCurrency(GameManager.instance.bossShopCurrencyReward);
             GameManager.instance.BossDead(transform.position);
         }
         else
         {
+            GameManager.instance.AddShopCurrency(1);
             // [버그 수정 완료] 원본 유실되어 있던 DropRewards() 드랍 시스템 명확하게 가동! 보석이 100% 필드에 떨어집니다.
             DropRewards();
         }
@@ -150,7 +152,7 @@ public class Enemy : MonoBehaviour
         }
 
         // 2. 적은 확률로 럭키 랜덤 상자 드롭
-        if (Random.value < boxDropChance)
+        if (Random.value < Mathf.Clamp01(boxDropChance + GameManager.instance.ShopBoxDropChanceBonus))
         {
             GameObject box = GameManager.instance.pool.Get(randomBoxPrefabId);
             if (box != null)
@@ -162,6 +164,8 @@ public class Enemy : MonoBehaviour
                 if (pickup != null)
                 {
                     pickup.InitPickup(ItemPickup.PickupType.RandomBox, 0);
+                    Vector3 randomOffset = Quaternion.Euler(0, 0, Random.Range(0f, 360f)) * Vector3.up * Random.Range(0.8f, 1.3f);
+                    pickup.StartBounce(transform.position, transform.position + randomOffset, 0.45f);
                 }
 
                 // BoxOpen 컴포넌트 강제 상태 리셋

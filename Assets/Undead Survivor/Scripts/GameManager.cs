@@ -8,6 +8,8 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
+    public enum ShopUpgradeType { LevelUpCost, MoveSpeed, Damage, AttackSpeed, MaxHealth, EnemySpawnTime, RandomBoxChance }
+
     public static GameManager instance;  // static : 정적으로 사용하겠다는 키워드, 바로 메모리에 얹어버림, 인스펙터에 나타나지않음, 정적변수는 즉시 클래스에서 호출가능
     [Header("# Game Control")]    // Header : 인스펙터의 속성들을 깔끔하게 구분시켜주는 타이틀
     public bool isLive;
@@ -19,11 +21,23 @@ public class GameManager : MonoBehaviour
     [Header("# Player Info")]
     public int playerId;    // 캐릭터 ID를 저장할 변수 선언
     public float health;
+    public float baseMaxHealth = 100;
     public float maxHealth = 100;
     public int level;   // 게임매니저에 레벨, 킬수, 경험치 변수 선언
     public int kill;
     public int exp;
     public int[] nextExp = { 15, 30, 60, 100, 150, 210, 280, 360, 450, 600 };   // 각 레벨의 필요 경험치를 보관할 배열 변수 선언
+    [Header("# Shop")]
+    public int shopCurrency;
+    public int bossShopCurrencyReward = 100;
+    public int[] shopUpgradeLevels = new int[7];
+    public float shopLevelUpCostDiscount = 0.03f;
+    public float shopMoveSpeedBonus = 0.03f;
+    public float shopDamageBonus = 0.03f;
+    public float shopAttackSpeedBonus = 0.03f;
+    public float shopMaxHealthBonus = 0.1f;
+    public float shopEnemySpawnTimeReduction = 0.03f;
+    public float shopRandomBoxChanceBonus = 0.01f;
     [Header("# Game Object")]
     public Player player;
     public PoolManager pool;
@@ -31,6 +45,7 @@ public class GameManager : MonoBehaviour
     public BossHPUI uiBossHP;
     public Result uiResult;    // 게임 결과 UI 오브젝트를 저장할 변수 선언, 타입을 스크립트로 변경(영상13 28:30) 
     public GameObject uiHealth;
+    public GameObject shopButton;
     public GameObject enemyCleaner; // 게임 승리시 적을 정리하는 클리너 변수 선언
     public Spawner spawner;
     public float bossZoomSize = 4.5f;
@@ -48,9 +63,13 @@ public class GameManager : MonoBehaviour
     public float bossDeathExplosionRadius = 2.5f;
     public float bossDeathExplosionSize = 2.5f;
     public float bossDeathSlowScale = 0.25f;
-    public float bossDeathSlowDuration = 0.8f;
+    public float bossDeathSlowDuration = 1.6f;
     public float bossDeathShakePower = 0.25f;
     public float bossDeathShakeDuration = 0.8f;
+    public int bossRewardCoinPrefabId = 5;
+    public float bossRewardCoinRadius = 2.8f;
+    public float bossRewardCoinBounceDuration = 0.8f;
+    public Sprite bossRewardCoinSprite;
 
     float defaultCameraSize;
     bool isBossDeathRoutine;
@@ -59,6 +78,7 @@ public class GameManager : MonoBehaviour
     void Awake()
     {
         instance = this;    // 인스턴스 변수를 자기자신으로 초기화
+        LoadShopData();
         if (spawner == null)
         {
             spawner = FindObjectOfType<Spawner>();
@@ -68,11 +88,14 @@ public class GameManager : MonoBehaviour
             uiHealth = GameObject.Find("Canvas/HUD/Health");
         }
         EnsureBossWarningUI();
+        SetShopButtonActive(true);
     }
 
     public void GameStart(int id)   // 게임 시작 함수에 Player의 ID 매개변수 추가
     {
         playerId = id;
+        SetShopButtonActive(false);
+        ApplyShopStats();
         health = maxHealth; // 게임 시작시 현재체력을 최대체력으로 초기화
         gameTime = 0f;
         bossTime = bossBattleTime;
@@ -115,6 +138,7 @@ public class GameManager : MonoBehaviour
 
         uiResult.gameObject.SetActive(true);   // 게임결과 UI 활성화
         uiResult.Lose();    // 이미지 오브젝트를 활성화하는 패배 함수 호출
+        SetShopButtonActive(true);
         Stop();
 
         AudioManager.instance.PlayBgm(false);   // 게임 종료시 Bgm종료
@@ -147,6 +171,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = bossDeathSlowScale;
 
         StartCoroutine(BossDeathShakeRoutine());
+        SpawnBossRewardCoins(bossPosition);
 
         for (int i = 0; i < bossDeathExplosionCount; i++)
         {
@@ -179,6 +204,7 @@ public class GameManager : MonoBehaviour
 
         uiResult.gameObject.SetActive(true);   // 게임결과 UI 활성화
         uiResult.Win();    // 이미지 오브젝트를 활성화하는 승리 함수 호출
+        SetShopButtonActive(true);
         Stop();
 
         
@@ -189,6 +215,126 @@ public class GameManager : MonoBehaviour
     public void GameRetry() // 게임 재시작 함수 작성
     {
         SceneManager.LoadScene(0);    // LoadScene이름 혹은 인덱스로 장면을 새롭게 부르는 함수
+    }
+
+    void SetShopButtonActive(bool active)
+    {
+        if (shopButton != null)
+        {
+            shopButton.SetActive(active);
+        }
+    }
+
+    public void AddShopCurrency(int amount)
+    {
+        shopCurrency += Mathf.Max(0, amount);
+        PlayerPrefs.SetInt("ShopCurrency", shopCurrency);
+    }
+
+    public bool TryBuyShopUpgrade(ShopUpgradeType type, int maxLevel, int baseCost, int costIncrease)
+    {
+        int index = (int)type;
+        EnsureShopUpgradeArray();
+
+        if (shopUpgradeLevels[index] >= maxLevel)
+            return false;
+
+        int cost = GetShopUpgradeCost(type, baseCost, costIncrease);
+        if (shopCurrency < cost)
+            return false;
+
+        shopCurrency -= cost;
+        shopUpgradeLevels[index]++;
+        SaveShopData();
+        ApplyShopStats();
+        return true;
+    }
+
+    public int GetShopUpgradeLevel(ShopUpgradeType type)
+    {
+        EnsureShopUpgradeArray();
+        return shopUpgradeLevels[(int)type];
+    }
+
+    public int GetShopUpgradeCost(ShopUpgradeType type, int baseCost, int costIncrease)
+    {
+        return baseCost + GetShopUpgradeLevel(type) * costIncrease;
+    }
+
+    public int GetRequiredExp(int levelIndex)
+    {
+        int baseExp = nextExp[Mathf.Min(levelIndex, nextExp.Length - 1)];
+        float discount = Mathf.Clamp(GetShopUpgradeLevel(ShopUpgradeType.LevelUpCost) * shopLevelUpCostDiscount, 0f, 0.3f);
+        return Mathf.Max(1, Mathf.CeilToInt(baseExp * (1f - discount)));
+    }
+
+    public float ShopMoveSpeedRate
+    {
+        get { return GetShopUpgradeLevel(ShopUpgradeType.MoveSpeed) * shopMoveSpeedBonus; }
+    }
+
+    public float ShopDamageRate
+    {
+        get { return GetShopUpgradeLevel(ShopUpgradeType.Damage) * shopDamageBonus; }
+    }
+
+    public float ShopAttackSpeedRate
+    {
+        get { return Mathf.Clamp(GetShopUpgradeLevel(ShopUpgradeType.AttackSpeed) * shopAttackSpeedBonus, 0f, 0.45f); }
+    }
+
+    public float ShopEnemySpawnRate
+    {
+        get { return Mathf.Clamp(1f - GetShopUpgradeLevel(ShopUpgradeType.EnemySpawnTime) * shopEnemySpawnTimeReduction, 0.5f, 1f); }
+    }
+
+    public float ShopBoxDropChanceBonus
+    {
+        get { return Mathf.Clamp(GetShopUpgradeLevel(ShopUpgradeType.RandomBoxChance) * shopRandomBoxChanceBonus, 0f, 0.15f); }
+    }
+
+    public void ApplyShopStats()
+    {
+        maxHealth = baseMaxHealth * (1f + GetShopUpgradeLevel(ShopUpgradeType.MaxHealth) * shopMaxHealthBonus);
+    }
+
+    void LoadShopData()
+    {
+        EnsureShopUpgradeArray();
+        shopCurrency = PlayerPrefs.GetInt("ShopCurrency", 0);
+        for (int i = 0; i < shopUpgradeLevels.Length; i++)
+        {
+            shopUpgradeLevels[i] = PlayerPrefs.GetInt("ShopUpgrade_" + i, 0);
+        }
+        ApplyShopStats();
+    }
+
+    void SaveShopData()
+    {
+        EnsureShopUpgradeArray();
+        PlayerPrefs.SetInt("ShopCurrency", shopCurrency);
+        for (int i = 0; i < shopUpgradeLevels.Length; i++)
+        {
+            PlayerPrefs.SetInt("ShopUpgrade_" + i, shopUpgradeLevels[i]);
+        }
+        PlayerPrefs.Save();
+    }
+
+    void EnsureShopUpgradeArray()
+    {
+        int count = System.Enum.GetValues(typeof(ShopUpgradeType)).Length;
+        if (shopUpgradeLevels == null || shopUpgradeLevels.Length != count)
+        {
+            int[] oldLevels = shopUpgradeLevels;
+            shopUpgradeLevels = new int[count];
+            if (oldLevels != null)
+            {
+                for (int i = 0; i < Mathf.Min(oldLevels.Length, shopUpgradeLevels.Length); i++)
+                {
+                    shopUpgradeLevels[i] = oldLevels[i];
+                }
+            }
+        }
     }
 
     void Update()
@@ -443,6 +589,34 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    void SpawnBossRewardCoins(Vector3 bossPosition)
+    {
+        if (bossRewardCoinPrefabId < 0 || pool == null)
+            return;
+
+        int coinCount = Mathf.Max(0, bossShopCurrencyReward);
+        for (int i = 0; i < coinCount; i++)
+        {
+            GameObject coin = pool.Get(bossRewardCoinPrefabId);
+            if (coin == null)
+                continue;
+
+            coin.transform.position = bossPosition;
+            ItemPickup pickup = coin.GetComponent<ItemPickup>();
+            if (pickup != null)
+            {
+                if (bossRewardCoinSprite != null)
+                {
+                    pickup.coinSprite = bossRewardCoinSprite;
+                }
+
+                pickup.InitPickup(ItemPickup.PickupType.Coin, 0);
+                Vector3 randomOffset = Quaternion.Euler(0, 0, Random.Range(0f, 360f)) * Vector3.up * Random.Range(bossRewardCoinRadius * 0.5f, bossRewardCoinRadius);
+                pickup.StartBounce(bossPosition, bossPosition + randomOffset, bossRewardCoinBounceDuration);
+            }
+        }
+    }
+
     IEnumerator BossDeathShakeRoutine()
     {
         Camera mainCamera = Camera.main;
@@ -464,19 +638,21 @@ public class GameManager : MonoBehaviour
         cameraTransform.position = origin;
     }
 
-    public void GetExp()    // 경험치 증가함수 작성
+    public void GetExp(int amount = 1)    // 경험치 증가함수 작성
     {
         if (!isLive)
             return;
 
-        exp ++;
+        exp += amount;
 
-        if (exp == nextExp[Mathf.Min(level, nextExp.Length - 1)])  // exp가 현재 레벨의 최대경험치와 같아지면
+        while (exp >= GetRequiredExp(level))  // exp가 현재 레벨의 최대경험치와 같아지면
         // Mathf.Min 함수를 사용해 최고 경험치를 그대로 사용하도록 변경 (영상12 40:40)
         {
+            exp -= GetRequiredExp(level);
             level ++;   // level + 1
-            exp = 0;    // exp는 0으로 초기화
             uiLevelUp.Show();   // LevelUp UI 출력
+            if (!isLive)
+                break;
         }
     }
 
