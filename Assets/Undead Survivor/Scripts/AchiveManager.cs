@@ -77,7 +77,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
                 break;
 
             case Achive.UnlockBean:
-                isAchive = GameManager.instance.gameTime == GameManager.instance.maxGameTime;
+                isAchive = GameManager.instance.isBossCleared;
                 break;
         }
 

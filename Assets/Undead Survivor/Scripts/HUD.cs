@@ -50,6 +50,7 @@ public class HUD : MonoBehaviour
 
             case InfoType.Time :
                 float remainTime = GameManager.instance.isBossBattle ? GameManager.instance.bossTime : GameManager.instance.maxGameTime - GameManager.instance.gameTime;    // 남은 시간 구하기
+                remainTime = Mathf.Max(0f, remainTime);
                 int min = Mathf.FloorToInt(remainTime / 60);    // 60으로 나누어 분을 구하되 Mathf.FloorToInt()를 사용해 소수점 버리기
                 int sec = Mathf.FloorToInt(remainTime % 60); // % 60 : 60으로 나눈 나머지
                 myText.text = string.Format("{0:D2}:{1:D2}",min, sec);  // 이미 min과 sec을 구할때 소수점을 버려서 F0은 필요없음

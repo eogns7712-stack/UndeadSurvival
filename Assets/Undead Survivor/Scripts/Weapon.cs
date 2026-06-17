@@ -11,6 +11,7 @@ public class Weapon : MonoBehaviour
     public float damage;
     public int count;
     public float speed;
+    public float minFireCooldown = 0.05f;
 
     float timer;
     float gearRate;
@@ -192,11 +193,13 @@ public class Weapon : MonoBehaviour
                 {
                     speed = 0.5f * Character.WeaponRate;
                 }
-                speed *= 1f - gearRate;
+                speed *= 1f - Mathf.Clamp(gearRate, 0f, 0.95f);
+                speed = Mathf.Max(minFireCooldown, speed);
                 break;
             default:
                 speed = 0.5f * Character.WeaponRate;
-                speed *= 1f - gearRate;
+                speed *= 1f - Mathf.Clamp(gearRate, 0f, 0.95f);
+                speed = Mathf.Max(minFireCooldown, speed);
                 break;
         }
     }

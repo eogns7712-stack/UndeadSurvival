@@ -8,12 +8,14 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    public enum ShopUpgradeType { LevelUpCost, MoveSpeed, Damage, AttackSpeed, MaxHealth, EnemySpawnTime, RandomBoxChance }
+    public enum ShopUpgradeType { LevelUpCost, MoveSpeed, Damage, AttackSpeed, MaxHealth, EnemySpawnTime, RandomBoxChance, PickupRange }
 
     public static GameManager instance;  // static : 정적으로 사용하겠다는 키워드, 바로 메모리에 얹어버림, 인스펙터에 나타나지않음, 정적변수는 즉시 클래스에서 호출가능
     [Header("# Game Control")]    // Header : 인스펙터의 속성들을 깔끔하게 구분시켜주는 타이틀
     public bool isLive;
     public bool isBossBattle;
+    public bool isBossCleared;
+    public bool isPaused;
     public float gameTime;
     public float maxGameTime = 2* 10;
     public float bossBattleTime = 180f;
@@ -30,7 +32,7 @@ public class GameManager : MonoBehaviour
     [Header("# Shop")]
     public int shopCurrency;
     public int bossShopCurrencyReward = 100;
-    public int[] shopUpgradeLevels = new int[7];
+    public int[] shopUpgradeLevels = new int[8];
     public float shopLevelUpCostDiscount = 0.03f;
     public float shopMoveSpeedBonus = 0.03f;
     public float shopDamageBonus = 0.03f;
@@ -38,14 +40,17 @@ public class GameManager : MonoBehaviour
     public float shopMaxHealthBonus = 0.1f;
     public float shopEnemySpawnTimeReduction = 0.03f;
     public float shopRandomBoxChanceBonus = 0.01f;
+    public float shopPickupRangeBonus = 0.25f;
     [Header("# Game Object")]
     public Player player;
     public PoolManager pool;
     public LevelUp uiLevelUp;
     public BossHPUI uiBossHP;
+    public PauseUI uiPause;
     public Result uiResult;    // 게임 결과 UI 오브젝트를 저장할 변수 선언, 타입을 스크립트로 변경(영상13 28:30) 
     public GameObject uiHealth;
     public GameObject shopButton;
+    public GameObject pauseButton;
     public GameObject enemyCleaner; // 게임 승리시 적을 정리하는 클리너 변수 선언
     public Spawner spawner;
     public float bossZoomSize = 4.5f;
@@ -53,9 +58,9 @@ public class GameManager : MonoBehaviour
     public float bossZoomHoldTime = 0.6f;
     public float bossZoomReturnDuration = 0.8f;
     public Image bossWarningOverlay;
-    public Text bossWarningText;
-    public string bossWarningMessage = "WARNING";
-    public int bossWarningFontSize = 28;
+    public Image bossWarningImage;
+    public Sprite bossWarningSprite;
+    public Vector2 bossWarningImageSize = new Vector2(520f, 110f);
     public float bossWarningDuration = 1.2f;
     public float bossWarningBlinkInterval = 0.15f;
     public int bossDeathExplosionFxPrefabId = -1;
@@ -89,17 +94,25 @@ public class GameManager : MonoBehaviour
         }
         EnsureBossWarningUI();
         SetShopButtonActive(true);
+        SetPauseButtonActive(false);
     }
 
     public void GameStart(int id)   // 게임 시작 함수에 Player의 ID 매개변수 추가
     {
         playerId = id;
         SetShopButtonActive(false);
+        SetPauseButtonActive(true);
+        isPaused = false;
+        if (uiPause != null)
+        {
+            uiPause.Hide();
+        }
         ApplyShopStats();
         health = maxHealth; // 게임 시작시 현재체력을 최대체력으로 초기화
         gameTime = 0f;
         bossTime = bossBattleTime;
         isBossBattle = false;
+        isBossCleared = false;
 
         player.gameObject.SetActive(true);  // 게임 시작시 Player 활성화 후 기본무기 지급
         if (uiBossHP != null)
@@ -129,6 +142,12 @@ public class GameManager : MonoBehaviour
     {
         isLive = false;
         isBossBattle = false;
+        isPaused = false;
+        SetPauseButtonActive(false);
+        if (uiPause != null)
+        {
+            uiPause.Hide();
+        }
         if (uiBossHP != null)
         {
             uiBossHP.Hide();
@@ -155,6 +174,7 @@ public class GameManager : MonoBehaviour
         if (isBossDeathRoutine)
             return;
 
+        isBossCleared = true;
         StartCoroutine(BossDeathRoutine(bossPosition));
     }
 
@@ -191,6 +211,12 @@ public class GameManager : MonoBehaviour
     {
         isLive = false;
         isBossBattle = false;
+        isPaused = false;
+        SetPauseButtonActive(false);
+        if (uiPause != null)
+        {
+            uiPause.Hide();
+        }
         if (uiBossHP != null)
         {
             uiBossHP.Hide();
@@ -222,6 +248,14 @@ public class GameManager : MonoBehaviour
         if (shopButton != null)
         {
             shopButton.SetActive(active);
+        }
+    }
+
+    void SetPauseButtonActive(bool active)
+    {
+        if (pauseButton != null)
+        {
+            pauseButton.SetActive(active);
         }
     }
 
@@ -291,6 +325,26 @@ public class GameManager : MonoBehaviour
     public float ShopBoxDropChanceBonus
     {
         get { return Mathf.Clamp(GetShopUpgradeLevel(ShopUpgradeType.RandomBoxChance) * shopRandomBoxChanceBonus, 0f, 0.15f); }
+    }
+
+    public float ShopPickupRangeBonus
+    {
+        get { return GetShopUpgradeLevel(ShopUpgradeType.PickupRange) * shopPickupRangeBonus; }
+    }
+
+    public float ShopLevelUpCostDiscount
+    {
+        get { return Mathf.Clamp(GetShopUpgradeLevel(ShopUpgradeType.LevelUpCost) * shopLevelUpCostDiscount, 0f, 0.3f); }
+    }
+
+    public float ShopMaxHealthRate
+    {
+        get { return GetShopUpgradeLevel(ShopUpgradeType.MaxHealth) * shopMaxHealthBonus; }
+    }
+
+    public float ShopEnemySpawnTimeReductionRate
+    {
+        get { return 1f - ShopEnemySpawnRate; }
     }
 
     public void ApplyShopStats()
@@ -496,10 +550,13 @@ public class GameManager : MonoBehaviour
         if (bossWarningOverlay == null)
             yield break;
 
-        if (bossWarningText != null)
+        if (bossWarningImage != null)
         {
-            bossWarningText.text = bossWarningMessage;
-            bossWarningText.gameObject.SetActive(true);
+            bossWarningImage.sprite = bossWarningSprite;
+            bossWarningImage.SetNativeSize();
+            RectTransform warningRect = bossWarningImage.GetComponent<RectTransform>();
+            warningRect.sizeDelta = bossWarningImageSize;
+            bossWarningImage.gameObject.SetActive(true);
         }
 
         float elapsed = 0f;
@@ -509,9 +566,9 @@ public class GameManager : MonoBehaviour
         {
             visible = !visible;
             bossWarningOverlay.gameObject.SetActive(visible);
-            if (bossWarningText != null)
+            if (bossWarningImage != null)
             {
-                bossWarningText.gameObject.SetActive(visible);
+                bossWarningImage.gameObject.SetActive(visible);
             }
 
             yield return new WaitForSecondsRealtime(bossWarningBlinkInterval);
@@ -523,38 +580,42 @@ public class GameManager : MonoBehaviour
 
     void EnsureBossWarningUI()
     {
-        if (bossWarningOverlay != null)
+        if (bossWarningOverlay == null)
+        {
+            GameObject canvas = GameObject.Find("Canvas");
+            if (canvas == null)
+                return;
+
+            GameObject overlayObject = new GameObject("BossWarningOverlay");
+            overlayObject.transform.SetParent(canvas.transform, false);
+            bossWarningOverlay = overlayObject.AddComponent<Image>();
+            bossWarningOverlay.color = new Color(1f, 0f, 0f, 0.25f);
+
+            RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+        }
+
+        if (bossWarningImage != null)
+        {
+            HideBossWarningUI();
             return;
+        }
 
-        GameObject canvas = GameObject.Find("Canvas");
-        if (canvas == null)
-            return;
+        GameObject imageObject = new GameObject("BossWarningImage");
+        imageObject.transform.SetParent(bossWarningOverlay.transform, false);
+        bossWarningImage = imageObject.AddComponent<Image>();
+        bossWarningImage.sprite = bossWarningSprite;
+        bossWarningImage.preserveAspect = true;
 
-        GameObject overlayObject = new GameObject("BossWarningOverlay");
-        overlayObject.transform.SetParent(canvas.transform, false);
-        bossWarningOverlay = overlayObject.AddComponent<Image>();
-        bossWarningOverlay.color = new Color(1f, 0f, 0f, 0.25f);
-
-        RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
-        overlayRect.anchorMin = Vector2.zero;
-        overlayRect.anchorMax = Vector2.one;
-        overlayRect.offsetMin = Vector2.zero;
-        overlayRect.offsetMax = Vector2.zero;
-
-        GameObject textObject = new GameObject("BossWarningText");
-        textObject.transform.SetParent(overlayObject.transform, false);
-        bossWarningText = textObject.AddComponent<Text>();
-        bossWarningText.text = bossWarningMessage;
-        bossWarningText.alignment = TextAnchor.MiddleCenter;
-        bossWarningText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        bossWarningText.fontSize = bossWarningFontSize;
-        bossWarningText.color = Color.red;
-
-        RectTransform textRect = textObject.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
+        RectTransform imageRect = imageObject.GetComponent<RectTransform>();
+        imageRect.anchorMin = new Vector2(0.5f, 0.5f);
+        imageRect.anchorMax = new Vector2(0.5f, 0.5f);
+        imageRect.pivot = new Vector2(0.5f, 0.5f);
+        imageRect.anchoredPosition = Vector2.zero;
+        imageRect.sizeDelta = bossWarningImageSize;
 
         HideBossWarningUI();
     }
@@ -566,9 +627,9 @@ public class GameManager : MonoBehaviour
             bossWarningOverlay.gameObject.SetActive(false);
         }
 
-        if (bossWarningText != null)
+        if (bossWarningImage != null)
         {
-            bossWarningText.gameObject.SetActive(false);
+            bossWarningImage.gameObject.SetActive(false);
         }
     }
 
@@ -666,5 +727,43 @@ public class GameManager : MonoBehaviour
     {
         isLive = true;
         Time.timeScale = 1;
+    }
+
+    public void TogglePause()
+    {
+        if (isPaused)
+        {
+            ResumePause();
+        }
+        else
+        {
+            PauseGame();
+        }
+    }
+
+    public void PauseGame()
+    {
+        if (!isLive || Time.timeScale == 0f)
+            return;
+
+        isPaused = true;
+        if (uiPause != null)
+        {
+            uiPause.Show();
+        }
+        Stop();
+    }
+
+    public void ResumePause()
+    {
+        if (!isPaused)
+            return;
+
+        isPaused = false;
+        if (uiPause != null)
+        {
+            uiPause.Hide();
+        }
+        Resume();
     }
 }

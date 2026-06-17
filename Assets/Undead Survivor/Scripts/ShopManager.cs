@@ -62,6 +62,7 @@ public class ShopManager : MonoBehaviour
     public void BuyMaxHealth() { BuyType(GameManager.ShopUpgradeType.MaxHealth); }
     public void BuyEnemySpawnTime() { BuyType(GameManager.ShopUpgradeType.EnemySpawnTime); }
     public void BuyRandomBoxChance() { BuyType(GameManager.ShopUpgradeType.RandomBoxChance); }
+    public void BuyPickupRange() { BuyType(GameManager.ShopUpgradeType.PickupRange); }
 
     void BuyType(GameManager.ShopUpgradeType type)
     {

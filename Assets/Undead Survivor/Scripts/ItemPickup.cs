@@ -92,9 +92,10 @@ public class ItemPickup : MonoBehaviour
             return;
 
         float distance = Vector3.Distance(transform.position, playerTransform.position);
+        float pickupDistance = magnetDistance + GameManager.instance.ShopPickupRangeBonus;
 
         // 플레이어에 가까이 다가가면 끌림 플래그 가동
-        if (!isBeingAttracted && distance <= magnetDistance)
+        if (!isBeingAttracted && distance <= pickupDistance)
         {
             isBeingAttracted = true;
         }
