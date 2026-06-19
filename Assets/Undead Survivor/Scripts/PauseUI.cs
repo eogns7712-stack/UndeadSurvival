@@ -14,11 +14,21 @@ public class PauseUI : MonoBehaviour
         public Text levelText;
     }
 
+    [System.Serializable]
+    public class ShopBonusSlot
+    {
+        public GameManager.ShopUpgradeType type;
+        public GameObject root;
+        public Text nameText;
+        public Text valueText;
+    }
+
     public GameObject pausePanel;
     public Text titleText;
     public Text statusText;
     public Text shopBonusText;
     public EquipmentSlot[] equipmentSlots;
+    public ShopBonusSlot[] shopBonusSlots;
 
     public void Show()
     {
@@ -197,7 +207,21 @@ public class PauseUI : MonoBehaviour
 
     void RefreshShopBonus()
     {
-        if (shopBonusText == null || GameManager.instance == null)
+        if (GameManager.instance == null)
+            return;
+
+        if (shopBonusSlots != null && shopBonusSlots.Length > 0)
+        {
+            if (shopBonusText != null)
+            {
+                shopBonusText.text = "상점 보너스";
+            }
+
+            RefreshShopBonusSlots();
+            return;
+        }
+
+        if (shopBonusText == null)
             return;
 
         GameManager manager = GameManager.instance;
@@ -211,6 +235,64 @@ public class PauseUI : MonoBehaviour
             "몹 리젠시간 -" + FormatPercent(manager.ShopEnemySpawnTimeReductionRate) + "\n" +
             "랜덤박스 확률 +" + FormatPercent(manager.ShopBoxDropChanceBonus) + "\n" +
             "아이템 흡수 거리 +" + manager.ShopPickupRangeBonus.ToString("0.##");
+    }
+
+    void RefreshShopBonusSlots()
+    {
+        GameManager manager = GameManager.instance;
+
+        for (int i = 0; i < shopBonusSlots.Length; i++)
+        {
+            ShopBonusSlot slot = shopBonusSlots[i];
+            if (slot.root != null)
+            {
+                slot.root.SetActive(true);
+            }
+
+            if (slot.nameText != null)
+            {
+                slot.nameText.text = GetShopBonusName(slot.type);
+            }
+
+            if (slot.valueText != null)
+            {
+                slot.valueText.text = GetShopBonusValue(manager, slot.type);
+            }
+        }
+    }
+
+    string GetShopBonusName(GameManager.ShopUpgradeType type)
+    {
+        switch (type)
+        {
+            case GameManager.ShopUpgradeType.LevelUpCost: return "필요 경험치";
+            case GameManager.ShopUpgradeType.MoveSpeed: return "이동속도";
+            case GameManager.ShopUpgradeType.Damage: return "공격력";
+            case GameManager.ShopUpgradeType.AttackSpeed: return "공격속도";
+            case GameManager.ShopUpgradeType.MaxHealth: return "최대체력";
+            case GameManager.ShopUpgradeType.EnemySpawnTime: return "리젠시간";
+            case GameManager.ShopUpgradeType.RandomBoxChance: return "박스 확률";
+            case GameManager.ShopUpgradeType.PickupRange: return "흡수 거리";
+        }
+
+        return type.ToString();
+    }
+
+    string GetShopBonusValue(GameManager manager, GameManager.ShopUpgradeType type)
+    {
+        switch (type)
+        {
+            case GameManager.ShopUpgradeType.LevelUpCost: return "-" + FormatPercent(manager.ShopLevelUpCostDiscount);
+            case GameManager.ShopUpgradeType.MoveSpeed: return "+" + FormatPercent(manager.ShopMoveSpeedRate);
+            case GameManager.ShopUpgradeType.Damage: return "+" + FormatPercent(manager.ShopDamageRate);
+            case GameManager.ShopUpgradeType.AttackSpeed: return "+" + FormatPercent(manager.ShopAttackSpeedRate);
+            case GameManager.ShopUpgradeType.MaxHealth: return "+" + FormatPercent(manager.ShopMaxHealthRate);
+            case GameManager.ShopUpgradeType.EnemySpawnTime: return "-" + FormatPercent(manager.ShopEnemySpawnTimeReductionRate);
+            case GameManager.ShopUpgradeType.RandomBoxChance: return "+" + FormatPercent(manager.ShopBoxDropChanceBonus) + "p";
+            case GameManager.ShopUpgradeType.PickupRange: return "+" + manager.ShopPickupRangeBonus.ToString("0.##");
+        }
+
+        return "0";
     }
 
     string FormatPercent(float value)
