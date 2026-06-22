@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting.Antlr3.Runtime.Tree;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;  // 장면관리를 사용하기위해 SceneManagement 네임스페이스 추가
 using UnityEngine.UI;
+
+
+/// 게임 시작과 종료, 경험치, 상점 저장값, 일시정지 및 보스전의 흐름 등. 게임의 전반적인 관리를 하는 스크립트.
 
 public class GameManager : MonoBehaviour
 {
@@ -28,7 +29,7 @@ public class GameManager : MonoBehaviour
     public int level;   // 게임매니저에 레벨, 킬수, 경험치 변수 선언
     public int kill;
     public int exp;
-    public int[] nextExp = { 15, 30, 60, 100, 150, 210, 280, 360, 450, 600 };   // 각 레벨의 필요 경험치를 보관할 배열 변수 선언
+    public int[] nextExp = { 5, 8, 10, 13, 15, 18, 20, 23, 25, 28, 30 };   // 각 레벨의 필요 경험치를 보관할 배열 변수 선언
     [Header("# Shop")]
     public int shopCurrency;
     public int bossShopCurrencyReward = 100;
@@ -109,6 +110,7 @@ public class GameManager : MonoBehaviour
         }
         ApplyShopStats();
         health = maxHealth; // 게임 시작시 현재체력을 최대체력으로 초기화
+        kill = 0;
         gameTime = 0f;
         bossTime = bossBattleTime;
         isBossBattle = false;
@@ -140,18 +142,7 @@ public class GameManager : MonoBehaviour
 
     IEnumerator GameOverRoutine()   // 게임오버의 딜레이를 위해 코루틴 작성
     {
-        isLive = false;
-        isBossBattle = false;
-        isPaused = false;
-        SetPauseButtonActive(false);
-        if (uiPause != null)
-        {
-            uiPause.Hide();
-        }
-        if (uiBossHP != null)
-        {
-            uiBossHP.Hide();
-        }
+        PrepareGameEnd();
 
         yield return new WaitForSeconds(0.5f);  // 0.5초 기다리기
 
@@ -178,6 +169,7 @@ public class GameManager : MonoBehaviour
         StartCoroutine(BossDeathRoutine(bossPosition));
     }
 
+    // 보스 사망 시 슬로우, 폭발, 화면 흔들림과 보상 생성을 진행한다.
     IEnumerator BossDeathRoutine(Vector3 bossPosition)
     {
         isBossDeathRoutine = true;
@@ -209,18 +201,7 @@ public class GameManager : MonoBehaviour
 
     IEnumerator GameVictoryRoutine()   // 게임오버의 딜레이를 위해 코루틴 작성
     {
-        isLive = false;
-        isBossBattle = false;
-        isPaused = false;
-        SetPauseButtonActive(false);
-        if (uiPause != null)
-        {
-            uiPause.Hide();
-        }
-        if (uiBossHP != null)
-        {
-            uiBossHP.Hide();
-        }
+        PrepareGameEnd();
         if (enemyCleaner != null)
         {
             enemyCleaner.SetActive(true);   //게임 승리 코루틴 전반부에 적 클리너 활성화
@@ -256,6 +237,25 @@ public class GameManager : MonoBehaviour
         if (pauseButton != null)
         {
             pauseButton.SetActive(active);
+        }
+    }
+
+    // 승리와 패배에 공통으로 필요한 UI 및 시간 상태를 정리.
+    void PrepareGameEnd()
+    {
+        isLive = false;
+        isBossBattle = false;
+        isPaused = false;
+        SetPauseButtonActive(false);
+
+        if (uiPause != null)
+        {
+            uiPause.Hide();
+        }
+
+        if (uiBossHP != null)
+        {
+            uiBossHP.Hide();
         }
     }
 
@@ -295,10 +295,11 @@ public class GameManager : MonoBehaviour
         return baseCost + GetShopUpgradeLevel(type) * costIncrease;
     }
 
+    // 상점의 경험치 비용 감소 효과를 적용하되 최소 요구치는 1로 보정.
     public int GetRequiredExp(int levelIndex)
     {
         int baseExp = nextExp[Mathf.Min(levelIndex, nextExp.Length - 1)];
-        float discount = Mathf.Clamp(GetShopUpgradeLevel(ShopUpgradeType.LevelUpCost) * shopLevelUpCostDiscount, 0f, 0.3f);
+        float discount = ShopLevelUpCostDiscount;
         return Mathf.Max(1, Mathf.CeilToInt(baseExp * (1f - discount)));
     }
 
@@ -347,9 +348,10 @@ public class GameManager : MonoBehaviour
         get { return 1f - ShopEnemySpawnRate; }
     }
 
+    // 저장된 상점 강화 수치를 현재 게임에 사용하는 보정값으로 변환.
     public void ApplyShopStats()
     {
-        maxHealth = baseMaxHealth * (1f + GetShopUpgradeLevel(ShopUpgradeType.MaxHealth) * shopMaxHealthBonus);
+        maxHealth = baseMaxHealth * (1f + ShopMaxHealthRate);
     }
 
     void LoadShopData()
@@ -423,6 +425,7 @@ public class GameManager : MonoBehaviour
         StartCoroutine(BossBattleRoutine());
     }
 
+    // 보스 소환 연출 : 잡몹 정리, 경고문구, 보스 소환, 카메라 줌과 UI 표시를 순서대로 연출.
     IEnumerator BossBattleRoutine()
     {
         isBossBattle = true;

@@ -1,7 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+
+/// 레벨업 선택지 구성, 키보드 입력 및 선택 가능 아이템 추첨을 관리하는 스크립트.
 
 public class LevelUp : MonoBehaviour
 {
@@ -91,7 +92,7 @@ public class LevelUp : MonoBehaviour
             Hide();
     }
 
-    // [버그 수정 완료] 중복 인덱스 대체 계산 오류를 완전 제거하여, 항상 깨끗하게 3개 가용 슬롯이 출현하도록 수정!
+    // [버그 수정] 중복 인덱스 대체 계산 오류를 제거, 항상 3개 레벨업 선택지 슬롯이 출현
     void Next() // 레벨업 선택창에서 아이템 3개를 랜덤으로 보여주는 함수
     {
         // 1. 모든 아이템 비활성화
@@ -100,7 +101,7 @@ public class LevelUp : MonoBehaviour
             item.gameObject.SetActive(false);
         }
 
-        // 2. 가용 후보 인덱스 리스트 추출 (Heal 카드는 중복 보정용이므로 후보군에서 일단 배제)
+        // 2. 가용 후보 인덱스 리스트 추출 (Heal 카드는 중복 보정용이므로 후보군에서 배제)
         List<int> validIndices = new List<int>();
         for (int i = 0; i < items.Length - 1; i++)
         {
@@ -127,20 +128,18 @@ public class LevelUp : MonoBehaviour
 
             if (ranItem.level >= ranItem.data.damages.Length)
             {
-                // 패시브 기어(장갑, 신발)도 무기처럼 한계 한도 없이 무한히 초월할 수 있도록 분기를 완전히 개방했습니다!
+                // 패시브 기어(장갑, 신발)도 무기처럼 한계 한도 없이 무한히 초월할 수 있도록 개방
                 // 단, 무작위로 40%의 확률로 물약(Heal) 대체를 거쳐서 등장합니다.
                 bool shouldReplaceWithHeal = (Random.value < 0.4f);
 
                 if (shouldReplaceWithHeal)
                 {
-                    // [중요] Heal 카드가 중복하여 추가되지 않은 깨끗한 상태에서만 단 1회 대체 승인!
                     if (!hasHealBeenAdded)
                     {
                         selectedList[i] = items.Length - 1; // items 리스트 맨 마지막 Heal 카드로 안전 우회 변경
                         hasHealBeenAdded = true;
                     }
-                    // 이미 Heal 카드가 출력되어 있는 상태라면, 카드 소실(동일 인스턴스 중첩)을 막기 위해 
-                    // 해당 만렙 장비의 초월 성장 카드가 화면에 정상 노출되도록 안전을 수호합니다.
+                    // 이미 Heal 카드가 출력되어 있는 상태라면, 카드 소실(동일 인스턴스 중첩)을 막기 위해  성장 카드가 화면에 정상 노출되도록 수정.
                 }
             }
         }
@@ -157,8 +156,7 @@ public class LevelUp : MonoBehaviour
             currentChoices[i] = -1;
         }
 
-        // [완료] currentChoices 원본 정렬 추가!
-        // 이 정렬을 통해 1, 2, 3 선택 슬롯과 키보드 입력 매칭이 언제나 일치합니다.
+        // [버그 수정] currentChoices 원본 정렬 추가, 이 정렬을 통해 1, 2, 3 선택 슬롯과 키보드 입력 매칭이 일치.
         System.Array.Sort(currentChoices, 0, selectedList.Count);
 
         // 6. UI 카드 게임오브젝트 동적 활성화

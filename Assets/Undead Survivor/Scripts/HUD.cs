@@ -1,8 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;   // UI 컴포넌트를 사용할 때는 UnityEngine.UI 네임 스페이스 사용
+
+/// 경험치, 레벨, 처치 수, 타이머와 player체력 등 플레이 중 HUD 값을 갱신하는 스크립트.
 
 public class HUD : MonoBehaviour
 {

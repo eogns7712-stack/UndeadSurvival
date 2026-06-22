@@ -1,5 +1,7 @@
 using UnityEngine;
 
+/// 보스 탄막의 이동, 플레이어 충돌 및 풀 반환을 처리하는 스크립트.
+
 public class BossBullet : MonoBehaviour
 {
     public float damage = 10f;

@@ -1,6 +1,7 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 일반 몬스터와 보스의 추적, 피격, 사망, 보상 드롭 및 재배치를 처리하는 스크립트.
 
 public class Enemy : MonoBehaviour
 {
@@ -14,11 +15,19 @@ public class Enemy : MonoBehaviour
     // [추가] 최적화를 위한 플레이어와의 비활성 한계 거리 선언
     public float despawnDistance = 22f; // 플레이어로부터 이 거리 이상 멀어지면 스폰 포인트로 복귀
     public float knockBackPower = 1.5f;
+    public float respawnMinRadius = 10f;
+    public float respawnMaxRadius = 14f;
 
     // [추가] 드롭할 보상 오브젝트 프리팹 ID 번호 (PoolManager 인덱스 매칭)
     public int expGemPrefabId = 5;       // 경험치 보석 프리팹 풀 인덱스
     public int randomBoxPrefabId = 6;    // 랜덤 기프트 상자 프리팹 풀 인덱스
     [Range(0f, 1f)] public float boxDropChance = 0.05f; // 랜덤 상자 드랍 확률 (5%)
+    public float boxSpawnOffset = 0.2f;
+    public float boxBounceMinDistance = 0.8f;
+    public float boxBounceMaxDistance = 1.3f;
+    public float boxBounceDuration = 0.45f;
+    public Color bossHitFlashColor = new Color(1f, 0.45f, 0.45f, 1f);
+    public float bossHitFlashDuration = 0.05f;
 
     bool isLive;
     
@@ -45,8 +54,7 @@ public class Enemy : MonoBehaviour
         if (!GameManager.instance.isLive)
             return;
 
-        if (!isLive || (!isBoss && anim.GetCurrentAnimatorStateInfo(0).IsName("Hit")))    // GetCurrentAnimatorStateInfo : 현재 재생되는 애니메이션 상태 정보를 가져오는 함수, IsName() : 해당 상태의 이름이 지정된 것과 같은지 확인하는 함수
-                // Enemy가 살아있지 않다면 or 현재 재생중인 애니메이션 상태의 이름이 'Hit'라면
+        if (!isLive || (!isBoss && anim.GetCurrentAnimatorStateInfo(0).IsName("Hit")))    // GetCurrentAnimatorStateInfo : 현재 재생되는 애니메이션 상태 정보를 가져오는 함수, IsName() : 해당 상태의 이름이 지정된 것과 같은지 확인하는 함수, Enemy가 살아있지 않다면 or 현재 재생중인 애니메이션 상태의 이름이 'Hit'라면 return;
             return;
         
         Vector2 dirVec = target.position - rigid.position;   // 위치차이 = 타겟(플레이어)의 위치 - 나(Enemy)의 위치
@@ -54,7 +62,7 @@ public class Enemy : MonoBehaviour
         rigid.MovePosition(rigid.position + nextVec);   // 현재 위치에서 플레이어의 키입력 값을 더한 이동
         rigid.velocity = Vector2.zero;    //물리 속도가 이동에 영향을 주지않도록 물리속도 제거
 
-        // [추가] 몬스터가 플레이어와 너무 멀어지면 플레이어 가시영역 밖 근처로 재생성 및 리스폰 위치 재배치
+        // 몬스터가 플레이어와 너무 멀어지면 플레이어 가시영역 밖 근처로 재생성 및 리스폰 위치 재배치
         float distanceToPlayer = Vector2.Distance(transform.position, GameManager.instance.player.transform.position);
         if (!isBoss && distanceToPlayer > despawnDistance)
         {
@@ -62,12 +70,12 @@ public class Enemy : MonoBehaviour
         }
     }
 
-    // [추가] 지나치게 멀리 도망간 몬스터를 플레이어 근처 외곽으로 순간이동
+    // 화면에서 지나치게 멀어진 일반 몬스터를 플레이어 주변(spawner의 위치)으로 재배치.
     void RepositionNearPlayer()
     {
         Vector3 playerPos = GameManager.instance.player.transform.position;
         float angle = Random.Range(0f, Mathf.PI * 2f);
-        float radius = Random.Range(10f, 14f); // 화면 밖 스폰 거리 유지
+        float radius = Random.Range(respawnMinRadius, respawnMaxRadius); // 화면 밖 스폰 거리 유지
         
         Vector3 spawnOffset = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius;
         transform.position = playerPos + spawnOffset;
@@ -128,7 +136,6 @@ public class Enemy : MonoBehaviour
         else
         {
             GameManager.instance.AddShopCurrency(1);
-            // [버그 수정 완료] 원본 유실되어 있던 DropRewards() 드랍 시스템 명확하게 가동! 보석이 100% 필드에 떨어집니다.
             DropRewards();
         }
 
@@ -137,6 +144,7 @@ public class Enemy : MonoBehaviour
     }
 
     // [추가] 드롭 시스템 구현
+    // 처치 보상과 확률형 랜덤박스를 풀에서 꺼내 배치.
     void DropRewards()
     {
         // 1. 경험치 보석 드랍
@@ -151,21 +159,21 @@ public class Enemy : MonoBehaviour
             }
         }
 
-        // 2. 적은 확률로 럭키 랜덤 상자 드롭
+        // 2. 적은 확률로 Random Box 드롭
         if (Random.value < Mathf.Clamp01(boxDropChance + GameManager.instance.ShopBoxDropChanceBonus))
         {
             GameObject box = GameManager.instance.pool.Get(randomBoxPrefabId);
             if (box != null)
             {
-                box.transform.position = transform.position + new Vector3(Random.Range(-0.2f, 0.2f), Random.Range(-0.2f, 0.2f), 0);
+                box.transform.position = transform.position + new Vector3(Random.Range(-boxSpawnOffset, boxSpawnOffset), Random.Range(-boxSpawnOffset, boxSpawnOffset), 0);
                 
                 // ItemPickup 초기화
                 ItemPickup pickup = box.GetComponent<ItemPickup>();
                 if (pickup != null)
                 {
                     pickup.InitPickup(ItemPickup.PickupType.RandomBox, 0);
-                    Vector3 randomOffset = Quaternion.Euler(0, 0, Random.Range(0f, 360f)) * Vector3.up * Random.Range(0.8f, 1.3f);
-                    pickup.StartBounce(transform.position, transform.position + randomOffset, 0.45f);
+                    Vector3 randomOffset = Quaternion.Euler(0, 0, Random.Range(0f, 360f)) * Vector3.up * Random.Range(boxBounceMinDistance, boxBounceMaxDistance);
+                    pickup.StartBounce(transform.position, transform.position + randomOffset, boxBounceDuration);
                 }
 
                 // BoxOpen 컴포넌트 강제 상태 리셋
@@ -225,8 +233,7 @@ public class Enemy : MonoBehaviour
             // 사망로직이 연달아 실행되는 것을 방지하기 위한 조건 추가(영상09 27:58)
             return; // 충돌한 오브젝트의 태그가 'Bullet'이 아니면 즉시 리턴
         
-        // [수정] 직접 체력을 깎고 사망 처리를 중복 실행하던 구조에서 -> 일관적으로 TakeDamage를 관통하여 호출하게 수정합니다.
-        // 이 수정을 통해 적이 총알에 맞았을 때 Die() 함수와 DropRewards()가 완벽히 보장되어 경험치 보석이 100% 드랍됩니다.
+        // Player가 직접 체력을 깎고 사망 처리를 중복 실행하던 구조에서 -> 일관적으로 TakeDamage를 관통하여 호출하도록 수정.
         Bullet bullet = collision.GetComponent<Bullet>();
         if (bullet != null)
         {
@@ -245,8 +252,8 @@ public class Enemy : MonoBehaviour
 
     IEnumerator BossHitFlash()
     {
-        spriter.color = new Color(1f, 0.45f, 0.45f, 1f);
-        yield return new WaitForSeconds(0.05f);
+        spriter.color = bossHitFlashColor;
+        yield return new WaitForSeconds(bossHitFlashDuration);
         spriter.color = defaultColor;
         bossHitFlashRoutine = null;
     }

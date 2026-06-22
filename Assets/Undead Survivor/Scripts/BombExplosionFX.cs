@@ -1,11 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 풀링된 수류탄 폭발 VFX의 크기와 투명도를 시간에 따라 변화시키는 스크립트.
 
 public class BombExplosionFX : MonoBehaviour
 {
     SpriteRenderer sr;
-    float maxDuration = 0.22f;
+    public float maxDuration = 0.22f;
+    public float initialScale = 0.1f;
+    public float radiusScaleMultiplier = 1.8f;
     float elapsed;
     Vector3 maxScale;
 
@@ -36,8 +38,8 @@ public class BombExplosionFX : MonoBehaviour
         }
 
         elapsed = 0f;
-        transform.localScale = Vector3.one * 0.1f;
-        maxScale = Vector3.one * radius * 1.8f;
+        transform.localScale = Vector3.one * initialScale;
+        maxScale = Vector3.one * radius * radiusScaleMultiplier;
 
         if (sr != null)
         {
@@ -82,7 +84,7 @@ public class BombExplosionFX : MonoBehaviour
         elapsed += Time.deltaTime;
         float t = elapsed / maxDuration;
 
-        transform.localScale = Vector3.Lerp(Vector3.one * 0.1f, maxScale, Mathf.Sin(t * Mathf.PI * 0.5f));
+        transform.localScale = Vector3.Lerp(Vector3.one * initialScale, maxScale, Mathf.Sin(t * Mathf.PI * 0.5f));
 
         if (sr != null)
         {

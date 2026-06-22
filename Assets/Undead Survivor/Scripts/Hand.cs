@@ -1,7 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
+
+/// 플레이어 방향에 맞춰 근접무기, 총기 및 수류탄 손 스프라이트를 배치하는 스크립트.
 
 public class Hand : MonoBehaviour
 {

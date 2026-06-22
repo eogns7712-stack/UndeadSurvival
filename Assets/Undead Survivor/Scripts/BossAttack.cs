@@ -1,6 +1,8 @@
 using System.Collections;
 using UnityEngine;
 
+/// 보스의 탄막 패턴과 페이즈별 공격 강화, 공격 예고선을 관리하는 스크립트.
+
 public class BossAttack : MonoBehaviour
 {
     public int bossBulletPrefabId = 10;
@@ -64,6 +66,7 @@ public class BossAttack : MonoBehaviour
         HideWarningLines();
     }
 
+    // 현재 페이즈의 공격 간격을 적용하며 세 패턴 중 하나를 무작위로 실행.
     IEnumerator AttackRoutine()
     {
         yield return new WaitForSeconds(firstAttackDelay);
@@ -232,6 +235,7 @@ public class BossAttack : MonoBehaviour
         return transform.position;
     }
 
+    // 일반 스폰 지점 중 보스 자신을 제외한 탄막 발사 지점만 반환.
     Transform[] GetPatternSpawnPoints(out int startIndex)
     {
         startIndex = 0;
@@ -250,6 +254,7 @@ public class BossAttack : MonoBehaviour
         return null;
     }
 
+    // 남은 체력 비율을 기준으로 1~3페이즈를 결정.
     int GetCurrentPhase()
     {
         if (enemy == null || enemy.maxhealthPoint <= 0f)
@@ -332,6 +337,7 @@ public class BossAttack : MonoBehaviour
         }
     }
 
+    // 필요한 수만큼만 예고선 오브젝트를 생성해 이후 패턴에서 재사용하는 오브젝트 풀링 구조.
     void EnsureWarningLines(int count)
     {
         if (warningLines != null && warningLines.Length >= count)

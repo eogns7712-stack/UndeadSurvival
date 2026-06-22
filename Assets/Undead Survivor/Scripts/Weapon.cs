@@ -1,7 +1,6 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 근접,원거리 무기의 레벨, 초월, 장비 보정과 공격 실행을 관리하는 스크립트.
 
 public class Weapon : MonoBehaviour
 {
@@ -11,25 +10,32 @@ public class Weapon : MonoBehaviour
     public float damage;
     public int count;
     public float speed;
-    public float minFireCooldown = 0.05f;
+    public float minFireCooldown = 0.02f;
+
+    const float MeleeRotationSpeed = 150f;
+    const float PistolCooldown = 0.5f;
+    const float RifleCooldown = 0.22f;
+    const float ShotgunCooldown = 1.35f;
+    const float MaxGearRate = 0.95f;
+    static readonly float[] ShotgunAngles = { -15f, 0f, 15f };
 
     float timer;
     float gearRate;
     Player player;  // Player의 자식 오브젝트를 편히 불러오기 위한 player변수 선언
-    public int masterUpgradeCount = 0; // [추가] 무기 한계돌파(최대 레벨 이후 추가 강화) 횟수 기록
+    public int masterUpgradeCount = 0; // [추가] 무기 초월 횟수 기록
 
     // [초월 진화용 추가] 무기 진화 단계 스프라이트 및 데이터
     public SpriteRenderer mySpriteRenderer;
     public ItemData originData;
 
-    // masterUpgradeCount의 단순 누적이 아닌, 데이터 배열 길이에 기인한 정밀 초월 단계(Stage) 연산기 설계
+    // masterUpgradeCount의 단순 누적이 아닌, 데이터 배열 길이에 기인한 초월 단계(Stage) 연산기.
     public int CurrentStage
     {
         get
         {
             if (originData == null || originData.damages.Length == 0) return 1;
             if (masterUpgradeCount <= 0) return 0;
-            // 예: 배열 크기가 5일 때, 1~5회 강화는 1단계(M1), 6~10회 강화는 2단계(M2)로 정확히 분간합니다.
+            // ex) 배열 크기가 5일 때, 1~5회 강화는 1단계(M1), 6~10회 강화는 2단계(M2)로 정확히 구분
             return 1 + (masterUpgradeCount - 1) / originData.damages.Length;
         }
     }
@@ -65,15 +71,14 @@ public class Weapon : MonoBehaviour
         }
     }
 
-    // [수정] 무기 초월 및 이미지 스프라이트 단계적 진화 시스템 탑재
+    // [수정] 무기 초월 및 이미지 스프라이트 단계적 진화 시스템
     public void MasterUpgrade(float damageMultiplier, int extraCount)
     {
         masterUpgradeCount++;
         
-        // [밸런스 기획 변경] 총(id == 1) 무기는 일방적인 데미지 가산을 거부하고 1차(M1), 2차(M2) 맞춤 성능으로 재편합니다.
         if (id == 1)
         {
-            // 총은 별도 맞춤 함수를 통해 밸런스를 적용하므로 무조건 누적 가산 연산을 분기 격리합니다.
+            // 총은 별도 맞춤 함수를 통해 밸런스를 적용하므로 누적 가산 연산 분리
             UpdateGunTranscendenceBalance(damageMultiplier, extraCount);
         }
         else if (id == 0)
@@ -97,7 +102,8 @@ public class Weapon : MonoBehaviour
         }
     }
 
-    // [추가] 총(itemId == 1)의 마스터 단계별(M1 라이플, M2 샷건) 전용 밸런스 튜닝
+    // [추가] 총(itemId == 1)의 초월 단계별(M1 라이플, M2 샷건) 전용 밸런스
+    // [버그수정]총기 초월 단계별 피해량, 발사 간격과 탄환 수를 현재 강화값에서 재계산
     void UpdateGunTranscendenceBalance(float damageMultiplier, int extraCount)
     {
         if (originData == null || originData.damages.Length == 0)
@@ -107,7 +113,7 @@ public class Weapon : MonoBehaviour
         int stageLevel = ((masterUpgradeCount - 1) % originData.damages.Length) + 1;
         if (stage == 1) // 1단계 초월: 라이플 진화
         {
-            // 공격력은 줄어들고 연사속도는 비약적으로 가증
+            // 공격력은 줄어들고 연사속도는 비약적으로 상승
             if (stageLevel == 1)
             {
                 damage *= 0.7f;
@@ -117,7 +123,6 @@ public class Weapon : MonoBehaviour
                 damage += damage * damageMultiplier;
                 count += extraCount;
             }
-            speed = 0.22f * Character.WeaponRate;                    // 연사 쿨타임 대폭 감소 (고속 연사)
             ApplyGear();
         }
         else if (stage >= 2) // 2단계 초월: 샷건 최종 단계
@@ -131,8 +136,7 @@ public class Weapon : MonoBehaviour
             {
                 damage += damage * damageMultiplier;
             }
-            speed = 1.35f * Character.WeaponRate;                    // 연사 속도 대폭 감소 (묵직한 사격)
-            count = 3;                                               // 발사 수 강제 3발 (산탄 구현용)
+            count = 3;  // 발사 수 강제 3발 (산탄 구현용)
             ApplyGear();
         }
     }
@@ -168,40 +172,44 @@ public class Weapon : MonoBehaviour
         }
     }
 
-    // [추가 완료] 장갑(Glove) 등 기어 업그레이드 수신부 연동
-    // BroadcastMessage 수신 시 각 무기군 고유의 연사 속도 기획 비율을 완벽 수호하도록 고정합니다.
+    // [추가] 장갑(Glove) 등 기어 업그레이드 수신부 연동
+    // BroadcastMessage 수신 시 각 무기군 고유의 연사 속도 기획 비율을 고정
     public void ApplyGear()
     {
         switch (id)
         {
             case 0: // 근접 공전 삽
-                speed = 150 * Character.WeaponSpeed;
+                speed = MeleeRotationSpeed * Character.WeaponSpeed;
                 speed += speed * gearRate;
                 Batch();
                 break;
             case 1: // 원거리 총
-                int stage = CurrentStage;
-                if (stage == 1) // M1 라이플
-                {
-                    speed = 0.22f * Character.WeaponRate;
-                }
-                else if (stage >= 2) // M2 샷건
-                {
-                    speed = 1.35f * Character.WeaponRate;
-                }
-                else // 기본 권총
-                {
-                    speed = 0.5f * Character.WeaponRate;
-                }
-                speed *= 1f - Mathf.Clamp(gearRate, 0f, 0.95f);
-                speed = Mathf.Max(minFireCooldown, speed);
+                ApplyFireCooldown(GetGunBaseCooldown());
                 break;
             default:
-                speed = 0.5f * Character.WeaponRate;
-                speed *= 1f - Mathf.Clamp(gearRate, 0f, 0.95f);
-                speed = Mathf.Max(minFireCooldown, speed);
+                ApplyFireCooldown(PistolCooldown);
                 break;
         }
+    }
+
+    float GetGunBaseCooldown()
+    {
+        int stage = CurrentStage;
+        if (stage == 1) // M1 라이플
+            return RifleCooldown;   // 연사 쿨타임 대폭 감소
+
+        if (stage >= 2) // M2 샷건
+            return ShotgunCooldown; // 연사 속도 대폭 감소
+
+        return PistolCooldown; // 기본 권총
+    }
+
+    // 장갑과 상점 공속을 반영하되 발사 간격이 최소값 아래로 내려가지 않게 한다.
+    void ApplyFireCooldown(float baseCooldown)
+    {
+        speed = baseCooldown * Character.WeaponRate;
+        speed *= 1f - Mathf.Clamp(gearRate, 0f, MaxGearRate);
+        speed = Mathf.Max(minFireCooldown, speed);
     }
 
     public void ApplyGear(float rate)
@@ -237,14 +245,14 @@ public class Weapon : MonoBehaviour
 
         for (int index = 0; index < GameManager.instance.pool.prefabs.Length; index++)
         {
-            if (data.projectile == GameManager.instance.pool.prefabs[index])    // 프리팹 아이디는 풀링매니저의 변수에서 찾아내 초기화
+            if (data.projectile == GameManager.instance.pool.prefabs[index])    // 프리팹 id는 풀링매니저의 변수에서 찾아내 초기화
             {
                 prefabId = index;
                 break;
             }
         }
 
-        // 수량 및 관통 초기화 완료 후 수치 반영 가동
+        // 수량 및 관통 초기화 완료 후 수치 반영
         ApplyGear();
 
         // Hand set
@@ -282,27 +290,33 @@ public class Weapon : MonoBehaviour
 
             bullet.GetComponent<Bullet>().Init(damage, -100, Vector3.zero); // -100 is Infinity Per.
             
-            // [초월 투사체 분리 반영] 사출되는 투사체 전용 이미지 등록 체크
-            int evolutionIndex = CurrentStage - 1;
-            if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
-            {
-                Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
-                SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
-                if (bRenderer != null && projectileSprite != null)
-                {
-                    bRenderer.sprite = projectileSprite;
-                }
-            }
-            else if (originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
-            {
-                // 발사체 전용이 없을 시, 무기 스프라이트(Melee)로 대체
-                Sprite projectileSprite = originData.customEvolutions[evolutionIndex];
-                SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
-                if (bRenderer != null && projectileSprite != null)
-                {
-                    bRenderer.sprite = projectileSprite;
-                }
-            }
+            // [초월 투사체 분리] 사출되는 투사체 전용 이미지 등록 체크
+            ApplyProjectileEvolutionSprite(bullet, true);
+        }
+    }
+
+    void ApplyProjectileEvolutionSprite(Transform bullet, bool useWeaponSpriteFallback)
+    {
+        if (originData == null)
+            return;
+
+        int evolutionIndex = CurrentStage - 1;
+        Sprite projectileSprite = null;
+
+        if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
+        {
+            projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
+        }
+        else if (useWeaponSpriteFallback && originData.customEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customEvolutions.Length)
+        {
+            // 발사체 전용이 없을 시, 무기 스프라이트(Melee)로 대체
+            projectileSprite = originData.customEvolutions[evolutionIndex];
+        }
+
+        SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
+        if (bRenderer != null && projectileSprite != null)
+        {
+            bRenderer.sprite = projectileSprite;
         }
     }
 
@@ -320,11 +334,10 @@ public class Weapon : MonoBehaviour
         if (id == 1 && CurrentStage >= 2)
         {
             // 중심 조준 방향(dir)을 기준으로 좌우 15도씩 틀어 총 3발 발사
-            float[] shotgunAngles = { -15f, 0f, 15f };
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < ShotgunAngles.Length; i++)
             {
                 // 각도만큼 방향 벡터 회전 연산
-                Vector3 rotDir = Quaternion.AngleAxis(shotgunAngles[i], Vector3.forward) * dir;
+                Vector3 rotDir = Quaternion.AngleAxis(ShotgunAngles[i], Vector3.forward) * dir;
 
                 Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
                 bullet.position = transform.position;
@@ -340,21 +353,11 @@ public class Weapon : MonoBehaviour
                 bulletComponent.Init(damage, 1, rotDir, transform.position); // 관통력 1 보정
 
                 // 탄환 이미지 진화형 샷건 스프라이트로 치환 적용
-                int evolutionIndex = CurrentStage - 1;
-                if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
-                {
-                    Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
-                    SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
-                    if (bRenderer != null && projectileSprite != null)
-                    {
-                        bRenderer.sprite = projectileSprite;
-                    }
-                }
+                ApplyProjectileEvolutionSprite(bullet, false);
             }
         }
         else
-        {
-            // 기본 총 혹은 1단계 초월 (M1 라이플: 초고속 점사) 격발 로직 (M1 Lv.2, M1 Lv.3 상태에서도 정밀 1발 점사 보장!)
+        {   // 기본 총 및 1단계 초월(라이플) 격발 로직.
             Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
             bullet.position = transform.position;   // 기존 근접무기 생성 로직을 그대로 활용하면서 위치는 Player위치로 지정
             bullet.rotation = Quaternion.FromToRotation(Vector3.up, dir); // Quaternion.FromToRotation(시작방향, 목표방향) : 지정된 축을 중심으로 목표를 향해 회전하는 함수
@@ -370,16 +373,7 @@ public class Weapon : MonoBehaviour
             bulletComponent.Init(damage, count, dir, transform.position); 
 
             // [초월 비주얼 반영] 사출되는 원거리 총알 이미지도 진화형으로 교체
-            int evolutionIndex = CurrentStage - 1;
-            if (originData.customProjectileEvolutions != null && evolutionIndex >= 0 && evolutionIndex < originData.customProjectileEvolutions.Length)
-            {
-                Sprite projectileSprite = originData.customProjectileEvolutions[evolutionIndex];
-                SpriteRenderer bRenderer = bullet.GetComponent<SpriteRenderer>();
-                if (bRenderer != null && projectileSprite != null)
-                {
-                    bRenderer.sprite = projectileSprite;
-                }
-            }
+            ApplyProjectileEvolutionSprite(bullet, false);
         }
 
         AudioManager.instance.PlaySfx(AudioManager.Sfx.Range); // 원거리 무기 사출시 효과음 재생

@@ -1,6 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 파편 수류탄(1단계 이상 초월된 수류탄)에서 생성되는 풀링 투사체의 이동, 충돌 및 반환을 처리하는 스크립트.
 
 public class BombFragment : MonoBehaviour
 {

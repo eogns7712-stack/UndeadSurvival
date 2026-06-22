@@ -1,6 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 감지 범위 안의 적을 수집하고 가장 가까운 목표의 위치를 원거리무기에 제공하는 스크립트.
 
 public class Scanner : MonoBehaviour
 {

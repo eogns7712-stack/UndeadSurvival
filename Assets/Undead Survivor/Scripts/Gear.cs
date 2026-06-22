@@ -1,7 +1,6 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 장갑과 신발 등 패시브 장비의 레벨과 능력치 적용을 관리하는 스크립트.
 
 public class Gear : MonoBehaviour
 {

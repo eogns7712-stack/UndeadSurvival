@@ -1,10 +1,11 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+// 상점 UI 표시, 영구 강화 구매 및 가격과 레벨 갱신을 관리하는 스크립트.
+
 public class ShopManager : MonoBehaviour
 {
+    // 상점 항목 하나의 구매 규칙과 UI 참조를 보관
     [System.Serializable]
     public class ShopItem
     {
@@ -64,6 +65,7 @@ public class ShopManager : MonoBehaviour
     public void BuyRandomBoxChance() { BuyType(GameManager.ShopUpgradeType.RandomBoxChance); }
     public void BuyPickupRange() { BuyType(GameManager.ShopUpgradeType.PickupRange); }
 
+    // 버튼에 대응하는 강화 데이터를 찾아 공통 구매 로직으로 전달
     void BuyType(GameManager.ShopUpgradeType type)
     {
         if (shopItems == null)

@@ -1,5 +1,7 @@
 using UnityEngine;
 
+/// 소이 수류탄(2단계 이상 초월된 수류탄)의 화염지대 피해, 지속시간 및 박동 효과를 처리하는 스크립트
+
 public class BombFireZone : MonoBehaviour
 {
     static Sprite fireZoneSprite;
@@ -10,8 +12,11 @@ public class BombFireZone : MonoBehaviour
     float duration;
     float timer;
     float tickTimer;
-    float tickRate = 0.5f;
+    public float tickRate = 0.5f;
+    public float pulseSpeed = 5f;
+    public float pulseScale = 0.1f;
 
+    // 풀에서 꺼낼 때 이전 사용 상태를 지우고 새로운 화염지대 값을 적용.
     public void SetupZone(float damage, float radius, float duration)
     {
         this.damage = damage;
@@ -81,8 +86,8 @@ public class BombFireZone : MonoBehaviour
             return;
         }
 
-        float beat = Mathf.PingPong(timer * 5f, 1f);
-        float scaleMultiplier = 1f + beat * 0.1f;
+        float beat = Mathf.PingPong(timer * pulseSpeed, 1f);
+        float scaleMultiplier = 1f + beat * pulseScale;
         transform.localScale = Vector3.one * radius * 2f * scaleMultiplier;
 
         if (sr != null)

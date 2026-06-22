@@ -1,10 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+// 일시정지 화면의 장비 강화 단계와 영구 상점 보너스를 표시 및 관리하는 스크립트.
 public class PauseUI : MonoBehaviour
 {
+    /// 장비 한 종류의 아이콘과 강화 단계 표시를 묶는다.
     [System.Serializable]
     public class EquipmentSlot
     {
@@ -14,6 +14,7 @@ public class PauseUI : MonoBehaviour
         public Text levelText;
     }
 
+    /// 상점 강화 한 종류의 이름과 적용 수치 표시를 묶는다.
     [System.Serializable]
     public class ShopBonusSlot
     {
@@ -25,7 +26,6 @@ public class PauseUI : MonoBehaviour
 
     public GameObject pausePanel;
     public Text titleText;
-    public Text statusText;
     public Text shopBonusText;
     public EquipmentSlot[] equipmentSlots;
     public ShopBonusSlot[] shopBonusSlots;
@@ -55,52 +55,16 @@ public class PauseUI : MonoBehaviour
             titleText.text = "PAUSE";
         }
 
-        RefreshStatus();
-        RefreshEquipmentSlots();
+        Item[] items = GetLevelUpItems();
+        RefreshEquipmentSlots(items);
         RefreshShopBonus();
     }
 
-    void RefreshStatus()
-    {
-        if (statusText == null)
-            return;
-
-        if (GameManager.instance == null || GameManager.instance.uiLevelUp == null)
-        {
-            statusText.text = "";
-            return;
-        }
-
-        Item[] items = GameManager.instance.uiLevelUp.GetComponentsInChildren<Item>(true);
-        List<string> lines = new List<string>();
-
-        for (int i = 0; i < items.Length; i++)
-        {
-            Item item = items[i];
-            if (item == null || item.data == null || item.level <= 0)
-                continue;
-
-            switch (item.data.itemType)
-            {
-                case ItemData.ItemType.Melee:
-                case ItemData.ItemType.Range:
-                case ItemData.ItemType.Glove:
-                case ItemData.ItemType.Shoe:
-                case ItemData.ItemType.Bomb:
-                    lines.Add(item.data.itemName + " : " + GetLevelText(item));
-                    break;
-            }
-        }
-
-        statusText.text = lines.Count > 0 ? string.Join("\n", lines.ToArray()) : "장착 장비 없음";
-    }
-
-    void RefreshEquipmentSlots()
+    // 장착된 아이템을 슬롯 종류와 연결하고 아이콘 및 초월 단계를 갱신
+    void RefreshEquipmentSlots(Item[] items)
     {
         if (equipmentSlots == null || equipmentSlots.Length == 0)
             return;
-
-        Item[] items = GetLevelUpItems();
 
         for (int i = 0; i < equipmentSlots.Length; i++)
         {
@@ -177,6 +141,7 @@ public class PauseUI : MonoBehaviour
         return null;
     }
 
+    // 수류탄이 과거 원거리 무기 ID와 겹치는 경우까지 고려해 슬롯을 구분
     bool IsMatchingSlot(Item item, ItemData.ItemType itemType)
     {
         if (itemType == ItemData.ItemType.Bomb)
@@ -210,35 +175,20 @@ public class PauseUI : MonoBehaviour
         if (GameManager.instance == null)
             return;
 
-        if (shopBonusSlots != null && shopBonusSlots.Length > 0)
+        if (shopBonusText != null)
         {
-            if (shopBonusText != null)
-            {
-                shopBonusText.text = "상점 보너스";
-            }
-
-            RefreshShopBonusSlots();
-            return;
+            shopBonusText.text = "상점 보너스";
         }
 
-        if (shopBonusText == null)
-            return;
-
-        GameManager manager = GameManager.instance;
-        shopBonusText.text =
-            "상점 보너스\n" +
-            "레벨업 필요 경험치 -" + FormatPercent(manager.ShopLevelUpCostDiscount) + "\n" +
-            "이동속도 +" + FormatPercent(manager.ShopMoveSpeedRate) + "\n" +
-            "공격력 +" + FormatPercent(manager.ShopDamageRate) + "\n" +
-            "공격속도 +" + FormatPercent(manager.ShopAttackSpeedRate) + "\n" +
-            "최대체력 +" + FormatPercent(manager.ShopMaxHealthRate) + "\n" +
-            "몹 리젠시간 -" + FormatPercent(manager.ShopEnemySpawnTimeReductionRate) + "\n" +
-            "랜덤박스 확률 +" + FormatPercent(manager.ShopBoxDropChanceBonus) + "\n" +
-            "아이템 흡수 거리 +" + manager.ShopPickupRangeBonus.ToString("0.##");
+        RefreshShopBonusSlots();
     }
 
+    // 상점 강화 단계로부터 실제 적용 중인 증감 수치를 계산해 표시
     void RefreshShopBonusSlots()
     {
+        if (shopBonusSlots == null)
+            return;
+
         GameManager manager = GameManager.instance;
 
         for (int i = 0; i < shopBonusSlots.Length; i++)

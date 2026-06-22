@@ -1,6 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 캐릭터 선택 UI의 능력치와 해금 상태를 표시하고 선택 입력을 전달하는 스크립트.
 
 public class Character : MonoBehaviour
 {

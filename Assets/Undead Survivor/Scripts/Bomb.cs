@@ -1,6 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 수류탄 무기의 발사 주기와 투사체 이동, 폭발 및 초월 효과를 처리하는 스크립트.
+/// 무기 오브젝트와 풀에서 꺼낸 투사체가 같은 컴포넌트를 공유
 
 public class Bomb : MonoBehaviour
 {
@@ -27,26 +28,30 @@ public class Bomb : MonoBehaviour
     public float explosionRadius = 2.5f;
     public int bombStage;
 
-    [HideInInspector] public Sprite shardSprite;
+    [Header("# Balance")]
+    public float defaultCooldown = 1.8f;
+    public float maxThrowRange = 3.2f;
+    public float throwSpeed = 7.5f;
+    public float fragmentSpeed = 15f;
+    public float fragmentRange = 4.5f;
+    public float fragmentDamageRate = 0.5f;
+    public float fragmentSpawnOffset = 0.8f;
+    public float fragmentHitDelay = 0.08f;
+    public float fragmentVisualScale = 0.45f;
+    public int fragmentSortingOrder = 20;
+    public int baseFragmentCount = 8;
+    public int fragmentPer = 1;
+    public float fireDamageRate = 0.25f;
+    public float fireRadiusRate = 0.85f;
+    public float fireDuration = 3f;
 
-    const float DefaultCooldown = 1.8f;
-    const float MaxThrowRange = 3.2f;
-    const float ThrowSpeed = 7.5f;
-    const float FragmentSpeed = 15f;
-    const float FragmentRange = 4.5f;
-    const float FragmentDamageRate = 0.5f;
-    const float FragmentSpawnOffset = 0.8f;
-    const float FragmentHitDelay = 0.08f;
-    const float FragmentVisualScale = 0.45f;
-    const int FragmentSortingOrder = 20;
-    const int BaseFragmentCount = 8;
-    const int FragmentPer = 1;
+    [HideInInspector] public Sprite shardSprite;
 
     BombMode mode = BombMode.Idle;
     Player player;
     Rigidbody2D rigid;
 
-    float baseCooldown = DefaultCooldown;
+    float baseCooldown;
     float gloveRate;
     float cooldown;
     float timer;
@@ -115,6 +120,7 @@ public class Bomb : MonoBehaviour
         }
     }
 
+    // 플레이어에게 장착된 수류탄 무기의 발사 주기를 갱신
     void UpdateWeapon()
     {
         timer += Time.deltaTime;
@@ -125,6 +131,7 @@ public class Bomb : MonoBehaviour
         ThrowGrenade();
     }
 
+    // 투척된 수류탄을 목표 지점까지 이동시키고 도착하면 폭발
     void UpdateProjectile()
     {
         CacheReferences();
@@ -166,19 +173,21 @@ public class Bomb : MonoBehaviour
         fragmentBonusCount = data.baseCount + Character.Count;
         originData = data;
 
-        baseCooldown = DefaultCooldown;
+        prefabId = FindPrefabId(data.projectile);
+        CopyProjectileSettings(data.projectile);
+
+        baseCooldown = defaultCooldown;
         if (data.speeds != null && data.speeds.Length > 0)
         {
             baseCooldown = data.speeds[0];
         }
 
-        prefabId = FindPrefabId(data.projectile);
-        CopyProjectileSettings(data.projectile);
         ApplyGear();
 
         player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
     }
 
+    // 프리팹에 설정된 투척 및 초월 밸런스 값을 장착 무기에 복사
     void CopyProjectileSettings(GameObject projectile)
     {
         if (projectile == null)
@@ -193,6 +202,21 @@ public class Bomb : MonoBehaviour
         fireZonePrefabId = projectileBomb.fireZonePrefabId;
         explosionRadius = projectileBomb.explosionRadius;
         maxRange = projectileBomb.maxRange;
+        defaultCooldown = projectileBomb.defaultCooldown;
+        maxThrowRange = projectileBomb.maxThrowRange;
+        throwSpeed = projectileBomb.throwSpeed;
+        fragmentSpeed = projectileBomb.fragmentSpeed;
+        fragmentRange = projectileBomb.fragmentRange;
+        fragmentDamageRate = projectileBomb.fragmentDamageRate;
+        fragmentSpawnOffset = projectileBomb.fragmentSpawnOffset;
+        fragmentHitDelay = projectileBomb.fragmentHitDelay;
+        fragmentVisualScale = projectileBomb.fragmentVisualScale;
+        fragmentSortingOrder = projectileBomb.fragmentSortingOrder;
+        baseFragmentCount = projectileBomb.baseFragmentCount;
+        fragmentPer = projectileBomb.fragmentPer;
+        fireDamageRate = projectileBomb.fireDamageRate;
+        fireRadiusRate = projectileBomb.fireRadiusRate;
+        fireDuration = projectileBomb.fireDuration;
     }
 
     public void LevelUp(float damage, int count)
@@ -253,6 +277,7 @@ public class Bomb : MonoBehaviour
         return 0;
     }
 
+    // 풀에서 재사용된 수류탄과 파편의 상태를 매번 새 값으로 초기화
     void InitProjectile(BombMode projectileMode, float damage, Vector3 dir, Vector3 startPos, int stage, int prefabId, int hitLimit, Sprite fragmentSprite)
     {
         CacheReferences();
@@ -268,7 +293,7 @@ public class Bomb : MonoBehaviour
         shardSprite = fragmentSprite;
 
         startPosition = startPos == default ? transform.position : startPos;
-        hitDelayTimer = mode == BombMode.Fragment ? FragmentHitDelay : 0f;
+        hitDelayTimer = mode == BombMode.Fragment ? fragmentHitDelay : 0f;
 
         SpriteRenderer sr = GetComponent<SpriteRenderer>();
         if (sr != null)
@@ -282,7 +307,7 @@ public class Bomb : MonoBehaviour
 
         if (rigid != null)
         {
-            float moveSpeed = mode == BombMode.Grenade ? ThrowSpeed : FragmentSpeed;
+            float moveSpeed = mode == BombMode.Grenade ? throwSpeed : fragmentSpeed;
             rigid.velocity = dir.normalized * moveSpeed;
         }
     }
@@ -314,7 +339,7 @@ public class Bomb : MonoBehaviour
             dir = Vector3.up;
         }
 
-        float throwRange = Mathf.Min(dir.magnitude, MaxThrowRange);
+        float throwRange = Mathf.Min(dir.magnitude, maxThrowRange);
         dir = dir.normalized;
 
         Transform grenade = GameManager.instance.pool.Get(prefabId).transform;
@@ -378,6 +403,7 @@ public class Bomb : MonoBehaviour
         }
     }
 
+    // 초월 단계에 따라 기본 폭발 뒤 파편 또는 화염지대를 추가.
     void Explode()
     {
         if (hasExploded)
@@ -413,22 +439,22 @@ public class Bomb : MonoBehaviour
 
     void SpawnFragments()
     {
-        int fragmentCount = Mathf.Max(1, BaseFragmentCount + fragmentBonusCount);
+        int fragmentCount = Mathf.Max(1, baseFragmentCount + fragmentBonusCount);
 
         for (int i = 0; i < fragmentCount; i++)
         {
             Vector3 dir = Quaternion.Euler(0, 0, i * (360f / fragmentCount)) * Vector3.up;
             GameObject fragment = GameManager.instance.pool.Get(fragmentPrefabId);
-            fragment.transform.position = transform.position + dir * FragmentSpawnOffset;
+            fragment.transform.position = transform.position + dir * fragmentSpawnOffset;
             fragment.transform.rotation = Quaternion.FromToRotation(Vector3.up, dir);
-            fragment.transform.localScale = Vector3.one * FragmentVisualScale;
+            fragment.transform.localScale = Vector3.one * fragmentVisualScale;
 
             SpriteRenderer sourceRenderer = GetComponent<SpriteRenderer>();
             SpriteRenderer fragmentRenderer = fragment.GetComponent<SpriteRenderer>();
             if (fragmentRenderer != null)
             {
                 fragmentRenderer.sprite = shardSprite != null ? shardSprite : (sourceRenderer != null ? sourceRenderer.sprite : null);
-                fragmentRenderer.sortingOrder = FragmentSortingOrder;
+                fragmentRenderer.sortingOrder = fragmentSortingOrder;
                 fragmentRenderer.color = Color.white;
                 fragmentRenderer.enabled = true;
             }
@@ -441,16 +467,15 @@ public class Bomb : MonoBehaviour
 
             if (fragmentLogic != null)
             {
-                fragmentLogic.Init(damage * FragmentDamageRate, FragmentPer + 1, FragmentRange, FragmentHitDelay, dir);
+                fragmentLogic.Init(damage * fragmentDamageRate, fragmentPer + 1, fragmentRange, fragmentHitDelay, dir);
             }
         }
     }
 
     void SpawnFireZone()
     {
-        float fireDamage = damage * 0.25f;
-        float fireRadius = explosionRadius * 0.85f;
-        float fireDuration = 3f;
+        float fireDamage = damage * fireDamageRate;
+        float fireRadius = explosionRadius * fireRadiusRate;
 
         if (fireZonePrefabId < 0 || GameManager.instance.pool == null || fireZonePrefabId >= GameManager.instance.pool.prefabs.Length)
             return;

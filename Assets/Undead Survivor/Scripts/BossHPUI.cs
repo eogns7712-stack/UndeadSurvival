@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// 보스 체력바의 등장 연출, 실시간 체력 표시 및 페이즈 마커를 관리하는 스크립트.
+
 public class BossHPUI : MonoBehaviour
 {
     public Slider hpSlider;
@@ -24,6 +26,7 @@ public class BossHPUI : MonoBehaviour
         }
     }
 
+    // 보스 등장 연출에 맞춰 빈 체력바를 서서히 채운다.
     public void Show(Enemy boss)
     {
         gameObject.SetActive(true);
@@ -86,6 +89,7 @@ public class BossHPUI : MonoBehaviour
         hpSlider.value = maxHealth > 0f ? curHealth / maxHealth : 0f;
     }
 
+    // 70%와 40% 지점 마커를 한 번 생성한 뒤 재사용한다.
     void EnsurePhaseMarkers()
     {
         if (!showPhaseMarkers)

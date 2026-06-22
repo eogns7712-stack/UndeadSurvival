@@ -1,12 +1,12 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+
+/// 플레이어 이동, 피격, 체력과 캐릭터별 기본 능력치를 관리하는 스크립트.
 
 public class Player : MonoBehaviour
 {
     public Vector2 inputVec; // Vector2 = x,y 2개의 축만 존재하는 2차원 벡터
-    public Vector2 moveDir; // 플레이어의 실제 이동방향을 저장하는 변수 선언
     public float speed;
     public Scanner scanner;   // Scanner타입 변수 선언
     public Hand[] hands;    // Player의 손 스크립트를 담을 배열변수 선언 및 초기화
@@ -18,8 +18,12 @@ public class Player : MonoBehaviour
     // [추가] 피격 깜빡임 애니메이션 처리를 위한 제어 변수들
     bool isInvincible = false; 
     public float invincibilityDuration = 0.5f; // 피격 후 무적 및 깜빡임 유지 시간
+    public float contactDamagePerSecond = 10f;
+    public float bossContactDamageMultiplier = 2f;
+    public float hitFlashInterval = 0.08f;
+    public Color hitFlashColor = new Color(1f, 0.4f, 0.4f, 0.6f);
 
-    // [버그 방지 추가] 다량의 경험치 동시 수집 시 누락 및 유실을 원천 방지하는 경험치 버퍼 큐
+    // [버그 방지] 다량의 경험치 동시 수집 시 누락 및 유실을 원천 방지하는 경험치 버퍼 큐
     public int pendingExp = 0;
 
     void Awake() // Start보다 우선 시작되는 함수 
@@ -45,7 +49,7 @@ public class Player : MonoBehaviour
     //     inputVec.y = Input.GetAxisRaw("Vertical"); // 상하 방향키 입력감지
     //     // GetAxis => 관성있음, GetAxisRaw => 관성없음
     
-    // [버그 방지 추가] 대기열에 경험치( pendingExp )가 적체되어 있다면, 프레임마다 안전하게 게임매니저에 가산
+    // [버그 방지] 대기열에 경험치( pendingExp )가 적체되어 있다면, 프레임마다 게임매니저에 가산
         if (pendingExp > 0)
         {
             int amount = pendingExp;
@@ -54,7 +58,7 @@ public class Player : MonoBehaviour
         }
     }
 
-    void FixedUpdate()  //물리 연산 프레임마다 호출되는 생명주기 함수
+    void FixedUpdate()  // 물리 연산 프레임마다 호출되는 생명주기 함수
     { 
 
     if (!GameManager.instance.isLive)
@@ -87,13 +91,11 @@ public class Player : MonoBehaviour
         if (!GameManager.instance.isLive)
             return;
         
-        // [수정] 무적 상태가 아닐 때에만 체력을 깎고 무적 깜빡임 연출 코루틴을 가동
-        // [버그 수정 완료] 무적 프레임 깜빡임 상태에서도 "실제 체력 대미지는 지속적으로 깎이도록" 보완
-        // 단, 피격 데미지가 과도하게 빠르게 닳는 것을 방지하기 위해 무적 상태일 땐 피격 딜량을 절반 수준으로 조정하거나 정상 가산시킵니다.
+        // [버그 수정] 프레임 깜빡임(player 피격 애니메이션) 상태에서도 실제 체력 대미지는 지속적으로 깎이도록 수정.
         if (collision.gameObject.CompareTag("Enemy"))
         {
             Enemy enemy = collision.gameObject.GetComponent<Enemy>();
-            float damage = Time.deltaTime * 10f * (enemy != null && enemy.isBoss ? 2.0f : 1.0f);
+            float damage = Time.deltaTime * contactDamagePerSecond * (enemy != null && enemy.isBoss ? bossContactDamageMultiplier : 1.0f);
             TakeDamage(damage); // Time.deltaTime을 이용해 대미지 누적
         }
     }
@@ -129,15 +131,15 @@ public class Player : MonoBehaviour
         
         float elapsed = 0f;
         Color originalColor = spriter.color;
-        Color flashColor = new Color(1f, 0.4f, 0.4f, 0.6f); // 붉고 살짝 불투명
+        Color flashColor = hitFlashColor; // 붉고 살짝 불투명
 
         while (elapsed < invincibilityDuration)
         {
             spriter.color = flashColor;
-            yield return new WaitForSeconds(0.08f);
+            yield return new WaitForSeconds(hitFlashInterval);
             spriter.color = originalColor;
-            yield return new WaitForSeconds(0.08f);
-            elapsed += 0.16f;
+            yield return new WaitForSeconds(hitFlashInterval);
+            elapsed += hitFlashInterval * 2f;
         }
 
         spriter.color = originalColor; // 원래 색상으로 최종 복귀

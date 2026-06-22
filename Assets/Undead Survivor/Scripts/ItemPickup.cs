@@ -1,18 +1,28 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 경험치, 코인, 회복, 자석 및 랜덤박스 보상의 이동과 획득을 처리하는 스크립트.
 
 public class ItemPickup : MonoBehaviour
 {
-    // [보상 다양화] 보석, 랜덤박스, 동전(경험치 다량), 힐팩(10% 체력 회복), 자석(필드 자성 끌림화)
+    // EXPGem, 랜덤박스, 동전(경험치 다량), 힐팩(10% 체력 회복), 자석
     public enum PickupType { Exp, RandomBox, Coin, HealPack, Magnet }
     public PickupType type;
 
     public float expValue = 1f;
     public float magnetSpeed = 8f;
     public float magnetDistance = 3.5f; // 자석 흡입 적용 거리
+    public float autoCollectDistance = 0.2f;
+    public int coinExpValue = 10;
+    public float healRate = 0.1f;
+    public int boxItemPrefabId = 5;
+    public float boxItemBounceMinDistance = 1.2f;
+    public float boxItemBounceMaxDistance = 1.8f;
+    public float boxItemBounceDuration = 0.6f;
+    public float postBounceCollectDelay = 0.3f;
+    public float bounceHeight = 1.5f;
 
-    // 상자에서 나올 수 있는 아이템들의 스프라이트 (유니티 인스펙터에서 등록)
+    // 상자에서 나올 수 있는 아이템들의 스프라이트
     [Header("# Box Item Visuals")]
     public Sprite coinSprite;
     public Sprite healPackSprite;
@@ -21,11 +31,11 @@ public class ItemPickup : MonoBehaviour
     Transform playerTransform;
     bool isBeingAttracted = false;
 
-    // [버그 방지 추가] 오브젝트 풀 재사용 시 원본 이미지를 유지하기 위한 캐싱 변수
+    // [버그 방지] 오브젝트 풀 재사용 시 원본 이미지를 유지하기 위한 캐싱 변수
     Sprite originalSprite;
     SpriteRenderer spr;
 
-    // [비주얼 개선 추가] 아이템 획득 유예 타이머 (상자 오프닝 연출용)
+    // [비주얼 개선] 아이템 획득 유예 타이머 (상자 오프닝 연출용)
     float collectCooldown = 0f;
 
     void Awake()
@@ -33,7 +43,7 @@ public class ItemPickup : MonoBehaviour
         spr = GetComponent<SpriteRenderer>();
         if (spr != null)
         {
-            originalSprite = spr.sprite; // 최초 기획된 보석 이미지 보관
+            originalSprite = spr.sprite; // EXPGem 이미지 보관
         }
     }
 
@@ -59,7 +69,7 @@ public class ItemPickup : MonoBehaviour
         {
             this.expValue = value;
             
-            // [버그 해결 완료] 일반 몹 드롭 보석으로 활성화될 때는 무조건 원본 보석 이미지로 리셋!
+            // [버그 수정] 일반 몹 드롭 보석으로 활성화될 때 원본 보석 이미지로 리셋
             if (spr != null && originalSprite != null)
             {
                 spr.sprite = originalSprite;
@@ -106,7 +116,7 @@ public class ItemPickup : MonoBehaviour
             transform.position = Vector3.MoveTowards(transform.position, playerTransform.position, magnetSpeed * Time.deltaTime);
 
             // [안전장치 추가] 자성 상태에서 플레이어와의 거리가 극도로 가까워지면 충돌 판정 유실 없이 자동 즉시 획득
-            if (distance < 0.2f)
+            if (distance < autoCollectDistance)
             {
                 CollectReward();
             }
@@ -116,25 +126,23 @@ public class ItemPickup : MonoBehaviour
     void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Player"))
-        {
-            // [추가] 공중에서 튕기는 연출 중에는 플레이어와 닿아도 수집하지 않음
+        {   // [추가] 공중에서 튕기는 연출 중에는 플레이어와 닿아도 수집하지 않음
             if (collectCooldown > 0f)
                 return;
 
-            // 상자를 제외한 일반 픽업류는 즉시 획득
-            if (type != PickupType.RandomBox)
+            if (type != PickupType.RandomBox)   // 상자를 제외한 일반 픽업류는 즉시 획득
             {
                 CollectReward();
             }
         }
     }
 
-    public void CollectReward()
+    public void CollectReward() // 보상 종류에 따라 즉시 적용하거나 랜덤박스 보상을 생성.
     {
         switch (type)
         {
             case PickupType.Exp:
-                // [버그 원천 차단] GameManager 직접 주입 대신 플레이어 Exp Buffer에 안전 우회 적립!
+                // [버그 예방] GameManager 직접 주입 대신 플레이어 Exp Buffer에 우회 적립.
                 if (GameManager.instance.player != null)
                 {
                     GameManager.instance.player.pendingExp += (int)expValue;
@@ -142,16 +150,16 @@ public class ItemPickup : MonoBehaviour
                 break;
 
             case PickupType.Coin:
-                // [버그 원천 차단] 금색 코인 대량 경험치도 플레이어 Exp Buffer에 안전 우회하여 레벨업 유실 방지!
+                // [버그 예방] 금색 코인 대량 경험치도 플레이어 Exp Buffer에 안전 우회하여 경험치 유실 방지.
                 if (GameManager.instance.player != null)
                 {
-                    GameManager.instance.player.pendingExp += 10;
+                    GameManager.instance.player.pendingExp += coinExpValue;
                 }
                 break;
 
             case PickupType.HealPack:
                 // 힐팩: 플레이어 체력 10% 즉시 보충
-                GameManager.instance.health = Mathf.Min(GameManager.instance.health + (GameManager.instance.maxHealth * 0.1f), GameManager.instance.maxHealth);
+                GameManager.instance.health = Mathf.Min(GameManager.instance.health + (GameManager.instance.maxHealth * healRate), GameManager.instance.maxHealth);
                 break;
 
             case PickupType.Magnet:
@@ -173,11 +181,11 @@ public class ItemPickup : MonoBehaviour
         }
     }
 
-    // [수정] 상자 오픈 시 지정된 확률로 3종의 추가 물리 아이템(코인, 힐팩, 자석) 중 하나를 필드에 드롭!
+    // [수정] 상자 오픈 시 지정된 확률로 3종의 추가 물리 아이템(코인, 힐팩, 자석) 중 하나를 필드에 드롭
     void SpawnBoxItemReward()
     {
-        // 상자를 획득했으므로, 필드의 보석 프리팹 풀을 재사용하여 코인/힐팩/자석 인스턴스를 바닥에 떨굽니다.
-        GameObject boxItem = GameManager.instance.pool.Get(5); // 보석 풀 재활용 (스프라이트가 동적으로 세팅됨)
+        // 상자를 획득했으므로, 필드의 보석 프리팹 풀을 재사용하여 코인/힐팩/자석 인스턴스를 바닥에 떨구기
+        GameObject boxItem = GameManager.instance.pool.Get(boxItemPrefabId); // 보석 풀 재활용 (오브젝트 풀링)
         if (boxItem != null)
         {
             boxItem.transform.position = transform.position;
@@ -194,23 +202,23 @@ public class ItemPickup : MonoBehaviour
 
                 pickup.InitPickup((PickupType)luckyRoll, 0);
 
-                // [비주얼 보완 완료] 소환 시 사방 360도 무작위 방향으로 튕겨 나가는 포물선 연출 가동!
-                Vector3 randomOffset = Quaternion.Euler(0, 0, Random.Range(0f, 360f)) * Vector3.up * Random.Range(1.2f, 1.8f);
-                pickup.StartBounce(transform.position, transform.position + randomOffset, 0.6f);
+                // 소환 시 사방 360도 무작위 방향으로 튕겨 나가는 포물선 연출
+                Vector3 randomOffset = Quaternion.Euler(0, 0, Random.Range(0f, 360f)) * Vector3.up * Random.Range(boxItemBounceMinDistance, boxItemBounceMaxDistance);
+                pickup.StartBounce(transform.position, transform.position + randomOffset, boxItemBounceDuration);
             }
         }
 
         AudioManager.instance.PlaySfx(AudioManager.Sfx.LevelUp);
     }
 
-    // [추가] 포물선 튕기기 연출용 진입 창구
+    // [추가] RandomBox Open 시 포물선 튕기기 연출
     public void StartBounce(Vector3 start, Vector3 end, float duration)
     {
-        collectCooldown = duration + 0.3f; // 튕기는 시간(0.6초) + 땅에 안착 후 여유 대기시간(0.3초) 동안 무적 보호막 가동
+        collectCooldown = duration + postBounceCollectDelay; // 튕기는 시간(0.6초) + 땅에 안착 후 여유 대기시간(0.3초) 동안 무적 보호막
         StartCoroutine(BounceRoutine(start, end, duration));
     }
 
-    // [추가] 2D 포물선 점프 이동 시뮬레이션 코루틴
+    // 드롭 아이템을 포물선으로 튕겨낸 뒤 일정 시간 후 획득 가능하게 만듦.
     IEnumerator BounceRoutine(Vector3 start, Vector3 end, float duration)
     {
         float elapsed = 0f;
@@ -222,8 +230,8 @@ public class ItemPickup : MonoBehaviour
             // X, Y축 선형 보간 이동
             Vector3 currentPos = Vector3.Lerp(start, end, t);
 
-            // 포물선 호(Arc)를 그리기 위한 삼각함수 Sin 연산 적용
-            float height = Mathf.Sin(t * Mathf.PI) * 1.5f; // 아크 높이 가중치 설정
+            // 포물선을 그리기 위한 삼각함수 Sin 연산 적용
+            float height = Mathf.Sin(t * Mathf.PI) * bounceHeight; // 높이 가중치 설정
             currentPos.y += height;
 
             transform.position = currentPos;
@@ -232,7 +240,7 @@ public class ItemPickup : MonoBehaviour
         transform.position = end; // 연출 완료 후 목푯값에 정확히 수렴 고정
     }
 
-    // 전 맵의 보석을 강제로 끌어오는 자석 함수
+    // 전 맵의 경험치를 끌어오는 자석 아이템을 구현하는 함수
     void ActivateFullMagnet()
     {
         ItemPickup[] allPickups = FindObjectsOfType<ItemPickup>();
@@ -240,7 +248,7 @@ public class ItemPickup : MonoBehaviour
         {
             if (item.gameObject.activeSelf && (item.type == PickupType.Exp || item.type == PickupType.Coin))
             {
-                item.isBeingAttracted = true; // 자성 원격 작동
+                item.isBeingAttracted = true; // 자성 작동
             }
         }
     }

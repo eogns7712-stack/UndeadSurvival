@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
+
+/// 업적 달성 여부를 저장하고 캐릭터 해금 및 알림 UI를 관리하는 스크립트
 
 public class AchiveManager : MonoBehaviour  // 업적관리
 {
@@ -16,8 +16,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
 
     void Awake()
     {   // 변수 초기화
-        achives = (Achive[])Enum.GetValues(typeof(Achive));    // Enum.GetValues : 주어진 열거형의 데이터를 모두 가져오는 함수
-        // Enum.GetValues 앞에 타입을 명시적으로 지정해 Achive[]타입맞추기
+        achives = (Achive[])Enum.GetValues(typeof(Achive));    // Enum.GetValues : 주어진 열거형의 데이터를 모두 가져오는 함수, Enum.GetValues 앞에 타입을 명시적으로 지정해 Achive[]타입맞추기
         wait = new WaitForSecondsRealtime(5);
 
         if (!PlayerPrefs.HasKey("MyData"))  // HasKey 함수로 데이터 유무 체크 후 초기화 실행
@@ -28,8 +27,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
 
     void Init()
     {   // 업적변수 초기화
-        PlayerPrefs.SetInt("MyData", 1); // PlayerPrefs : Unity에서 간단한 저장기능을 제공하는 클래스
-        // PlayerPrefs.SetInt("MyData", 1) : 'Mydata'라는 키에 int형 데이터 1을 저장
+        PlayerPrefs.SetInt("MyData", 1); // PlayerPrefs : Unity에서 간단한 저장기능을 제공하는 클래스, 'Mydata'라는 키에 int형 데이터 1을 저장
 
         // PlayerPrefs.SetInt("UnlockPotato", 0);
         // PlayerPrefs.SetInt("UnlockBean", 0);
@@ -50,11 +48,9 @@ public class AchiveManager : MonoBehaviour  // 업적관리
         for (int index = 0; index < lockCharacter.Length; index++)  // 잠금 버튼 배열을 순회하면서 인덱스에 해당하는 업적 이름 가져오기
         {
             string achivesName = achives[index].ToString();
-            // GetInt 함수로 저장된 업적 상태를 가져와서 버튼 활성화에 적용
-            bool isUnlock = PlayerPrefs.GetInt(achivesName) == 1;
+            bool isUnlock = PlayerPrefs.GetInt(achivesName) == 1;   // GetInt 함수로 저장된 업적 상태를 가져와서 버튼 활성화에 적용
             lockCharacter[index].SetActive(!isUnlock);
-            // 비활성화된 캐릭터버튼을 활성화하고, 활성화되있던 잠금버튼을 비활성화
-            unlockCharacter[index].SetActive(isUnlock);
+            unlockCharacter[index].SetActive(isUnlock); // 비활성화된 캐릭터버튼을 활성화하고, 활성화되있던 잠금버튼을 비활성화
         }
     }
 

@@ -1,6 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+/// 플레이어 이동 방향에 맞춰 무한 타일과 배경 오브젝트를 반대편으로 재배치하는 스크립트.
 
 public class Reposition : MonoBehaviour
 {
