@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 
-/// 업적 달성 여부를 저장하고 캐릭터 해금 및 알림 UI를 관리하는 스크립트
+// 업적 달성 여부를 저장하고 캐릭터 해금 및 알림 UI를 관리하는 스크립트
 
 public class AchiveManager : MonoBehaviour  // 업적관리
 {

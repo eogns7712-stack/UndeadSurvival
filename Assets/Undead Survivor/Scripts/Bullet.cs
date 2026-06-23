@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// 일반 원거리 무기(총[Tag:Range]) 탄환의 이동, 관통 횟수 및 최대 사거리를 관리하는 스크립트.
+// 일반 원거리 무기(총[Tag:Range]) 탄환의 이동, 관통 횟수 및 최대 사거리를 관리하는 스크립트.
 
 public class Bullet : MonoBehaviour
 {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// 파편 수류탄(1단계 이상 초월된 수류탄)에서 생성되는 풀링 투사체의 이동, 충돌 및 반환을 처리하는 스크립트.
+// 파편 수류탄(1단계 이상 초월된 수류탄)에서 생성되는 풀링 투사체의 이동, 충돌 및 반환을 처리하는 스크립트.
 
 public class BombFragment : MonoBehaviour
 {
@@ -22,7 +22,7 @@ public class BombFragment : MonoBehaviour
         rigid.gravityScale = 0f;
     }
 
-    public void Init(float damage, int remainingHits, float maxRange, float hitDelay, Vector3 dir)
+    public void Init(float damage, int remainingHits, float maxRange, float hitDelay, float speed, Vector3 dir)
     {
         this.damage = damage;
         this.remainingHits = remainingHits;
@@ -38,7 +38,7 @@ public class BombFragment : MonoBehaviour
         if (rigid != null)
         {
             rigid.simulated = true;
-            rigid.velocity = dir.normalized * 15f;
+            rigid.velocity = dir.normalized * speed;
         }
     }
 

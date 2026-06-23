@@ -1,35 +1,43 @@
 using System.Collections;
 using UnityEngine;
 
-/// 보스의 탄막 패턴과 페이즈별 공격 강화, 공격 예고선을 관리하는 스크립트.
+// 보스의 탄막 패턴과 페이즈별 공격 강화, 공격 예고선을 관리하는 스크립트.
 
 public class BossAttack : MonoBehaviour
 {
+    // 탄막 프리팹 풀 ID와 기본 탄막 능력치를 저장하는 변수
     public int bossBulletPrefabId = 10;
     public float bulletDamage = 10f;
     public float bulletSpeed = 5f;
     public float bulletMaxRange = 18f;
+
+    // 패턴 실행 간격과 공격 예고선 표시 시간/모양을 저장하는 변수.
     public float patternInterval = 2.5f;
     public float firstAttackDelay = 1f;
     public float telegraphDelay = 0.5f;
     public float warningLineLength = 18f;
     public float warningLineWidth = 0.08f;
+    public int warningLineSortingOrder = 20;
     public Color warningLineColor = new Color(1f, 0f, 0f, 0.45f);
 
     [Header("# Pattern 1")]
+    // 패턴 1 : 보스를 중심으로 원형 탄막 발사.
     public int circleBulletCount = 16;
 
     [Header("# Pattern 2")]
+    // 패턴 2 : 플레이어 현재 위치를 향해 부채꼴 탄막을 여러 번 반복 발사.
     public int aimedBurstCount = 4;
     public int aimedBulletCount = 3;
     public float aimedBurstInterval = 0.25f;
     public float aimedSpreadAngle = 12f;
 
     [Header("# Pattern 3")]
+    // 패턴 3 : 스폰 포인트에서 플레이어를 향해 발사.
     public Transform[] patternSpawnPoints;
     public float spawnPointBulletSpeed = 5f;
 
     [Header("# Phase")]
+    // 보스 체력 비율에 따라 페이즈를 변동, 공격 주기 감소 및 탄 개수 상승.
     public float phase2HealthRate = 0.7f;
     public float phase3HealthRate = 0.4f;
     public float phase2PatternInterval = 2.0f;
@@ -41,22 +49,31 @@ public class BossAttack : MonoBehaviour
 
     Enemy enemy;
     Coroutine attackRoutine;
+    const int PatternCount = 3;
+
+    // 공격 예고선은 매번 새로 만들지 않고 필요한 만큼 만들어 재사용.
     LineRenderer[] warningLines;
     Material warningMaterial;
 
     void Awake()
     {
+        // 보스 체력 비율을 읽기 위해 같은 오브젝트의 Enemy 컴포넌트를 보관.
         enemy = GetComponent<Enemy>();
         warningMaterial = new Material(Shader.Find("Sprites/Default"));
     }
 
     void OnEnable()
     {
-        attackRoutine = StartCoroutine(AttackRoutine());
+        // 풀에서 보스가 활성화될 때 공격 루틴을 시작.
+        if (attackRoutine == null)
+        {
+            attackRoutine = StartCoroutine(AttackRoutine());
+        }
     }
 
     void OnDisable()
     {
+        // 비활성화될 때 코루틴과 예고선을 정리해 다음 재사용에 섞이지 않게 한다.
         if (attackRoutine != null)
         {
             StopCoroutine(attackRoutine);
@@ -66,16 +83,26 @@ public class BossAttack : MonoBehaviour
         HideWarningLines();
     }
 
+    void OnDestroy()
+    {
+        if (warningMaterial != null)
+        {
+            Destroy(warningMaterial);
+            warningMaterial = null;
+        }
+    }
+
     // 현재 페이즈의 공격 간격을 적용하며 세 패턴 중 하나를 무작위로 실행.
     IEnumerator AttackRoutine()
     {
-        yield return new WaitForSeconds(firstAttackDelay);
+        yield return new WaitForSeconds(GetSafeWaitTime(firstAttackDelay));
 
         while (true)
         {
-            if (GameManager.instance != null && GameManager.instance.isLive && GameManager.instance.isBossBattle && enemy != null && enemy.isBoss)
+            // 게임이 진행 중이고 보스전 상태일 때만 패턴을 실행.
+            if (CanAttack())
             {
-                int patternIndex = Random.Range(0, 3);
+                int patternIndex = Random.Range(0, PatternCount);
 
                 if (patternIndex == 0)
                 {
@@ -91,12 +118,22 @@ public class BossAttack : MonoBehaviour
                 }
             }
 
-            yield return new WaitForSeconds(GetCurrentPatternInterval());
+            yield return new WaitForSeconds(GetSafeWaitTime(GetCurrentPatternInterval()));
         }
+    }
+
+    bool CanAttack()
+    {
+        return GameManager.instance != null
+            && GameManager.instance.isLive
+            && GameManager.instance.isBossBattle
+            && enemy != null
+            && enemy.isBoss;
     }
 
     IEnumerator FireCircle()
     {
+        // 현재 페이즈에서 강화된 탄 수를 기준으로 360도를 균등 분할.
         int count = Mathf.Max(1, GetCurrentCircleBulletCount());
         float angleStep = 360f / count;
         Vector3[] dirs = new Vector3[count];
@@ -107,8 +144,9 @@ public class BossAttack : MonoBehaviour
             dirs[i] = Quaternion.Euler(0f, 0f, angle) * Vector3.right;
         }
 
+        // 실제 발사 전에 같은 방향으로 붉은 예고선을 먼저 표시.
         ShowWarningLines(transform.position, dirs);
-        yield return new WaitForSeconds(telegraphDelay);
+        yield return new WaitForSeconds(GetSafeWaitTime(telegraphDelay));
         HideWarningLines();
 
         for (int i = 0; i < dirs.Length; i++)
@@ -119,13 +157,15 @@ public class BossAttack : MonoBehaviour
 
     IEnumerator FireAimedBurst()
     {
+        // 플레이어 위치를 매 반복마다 다시 잡아서 움직이는 플레이어를 추적.
         for (int i = 0; i < aimedBurstCount; i++)
         {
             Vector3 targetPos = GetPlayerPosition();
             Vector3 baseDir = targetPos - transform.position;
+            // 중심 방향 기준으로 여러 탄을 spreadAngle만큼 펼친다.
             Vector3[] dirs = GetSpreadDirs(baseDir, GetCurrentAimedBulletCount(), aimedSpreadAngle);
             ShowWarningLines(transform.position, dirs);
-            yield return new WaitForSeconds(telegraphDelay);
+            yield return new WaitForSeconds(GetSafeWaitTime(telegraphDelay));
             HideWarningLines();
 
             for (int dirIndex = 0; dirIndex < dirs.Length; dirIndex++)
@@ -133,16 +173,18 @@ public class BossAttack : MonoBehaviour
                 FireBullet(transform.position, dirs[dirIndex]);
             }
 
-            yield return new WaitForSeconds(aimedBurstInterval);
+            yield return new WaitForSeconds(GetSafeWaitTime(aimedBurstInterval));
         }
     }
 
     IEnumerator FireFromSpawnPoints()
     {
+        // 설정된 전용 포인트가 있으면 우선 사용하고, 없으면 Spawner의 일반 스폰 포인트를 사용.
         Transform[] points = GetPatternSpawnPoints(out int startIndex);
         if (points == null || points.Length <= startIndex)
             yield break;
 
+        // 예고선과 실제 발사에 사용할 시작점/방향을 미리 모은다.
         Vector3 targetPos = GetPlayerPosition();
         Vector3[] origins = new Vector3[points.Length - startIndex];
         Vector3[] dirs = new Vector3[points.Length - startIndex];
@@ -160,7 +202,7 @@ public class BossAttack : MonoBehaviour
         }
 
         ShowWarningLines(origins, dirs, warningCount);
-        yield return new WaitForSeconds(telegraphDelay);
+        yield return new WaitForSeconds(GetSafeWaitTime(telegraphDelay));
         HideWarningLines();
 
         for (int i = 0; i < warningCount; i++)
@@ -169,28 +211,22 @@ public class BossAttack : MonoBehaviour
         }
     }
 
-    void FireSpread(Vector3 origin, Vector3 baseDir, int count, float spreadAngle)
-    {
-        Vector3[] dirs = GetSpreadDirs(baseDir, count, spreadAngle);
-
-        for (int i = 0; i < dirs.Length; i++)
-        {
-            FireBullet(origin, dirs[i]);
-        }
-    }
-
     Vector3[] GetSpreadDirs(Vector3 baseDir, int count, float spreadAngle)
     {
+        // 탄 수가 1보다 작게 들어와도 최소 1발은 발사되도록 보정.
         count = Mathf.Max(1, count);
+        baseDir = GetSafeDirection(baseDir);
 
         Vector3[] dirs = new Vector3[count];
 
         if (count == 1)
         {
+            // 단발이면 spread 계산 없이 기준 방향 그대로 사용.
             dirs[0] = baseDir;
             return dirs;
         }
 
+        // spreadAngle의 절반만큼 왼쪽에서 시작해 오른쪽까지 균등 분배.
         float startAngle = -spreadAngle * 0.5f;
         float angleStep = spreadAngle / (count - 1);
 
@@ -209,6 +245,7 @@ public class BossAttack : MonoBehaviour
 
     void FireBullet(Vector3 origin, Vector3 dir, float speed)
     {
+        // 풀 또는 방향 값이 잘못된 경우 탄막 발사를 건너뛴다.
         if (GameManager.instance == null || GameManager.instance.pool == null || dir == Vector3.zero)
             return;
 
@@ -221,18 +258,33 @@ public class BossAttack : MonoBehaviour
         BossBullet bossBullet = bullet.GetComponent<BossBullet>();
         if (bossBullet != null)
         {
+            // BossBullet이 실제 이동, 사거리, 플레이어 충돌 처리를 담당.
             bossBullet.Init(dir, speed, bulletDamage, bulletMaxRange);
         }
     }
 
     Vector3 GetPlayerPosition()
     {
+        // 플레이어 참조가 없으면 보스 위치를 반환해 0 방향 오류 회피.
         if (GameManager.instance != null && GameManager.instance.player != null)
         {
             return GameManager.instance.player.transform.position;
         }
 
         return transform.position;
+    }
+
+    float GetSafeWaitTime(float waitTime)
+    {
+        return Mathf.Max(0f, waitTime);
+    }
+
+    Vector3 GetSafeDirection(Vector3 dir)
+    {
+        if (dir.sqrMagnitude <= 0.0001f)
+            return Vector3.right;
+
+        return dir;
     }
 
     // 일반 스폰 지점 중 보스 자신을 제외한 탄막 발사 지점만 반환.
@@ -272,6 +324,7 @@ public class BossAttack : MonoBehaviour
 
     float GetCurrentPatternInterval()
     {
+        // 높은 페이즈일수록 패턴 간격(공격속도)을 짧게 만든다.
         int phase = GetCurrentPhase();
         if (phase >= 3)
             return phase3PatternInterval;
@@ -284,6 +337,7 @@ public class BossAttack : MonoBehaviour
 
     int GetCurrentCircleBulletCount()
     {
+        // 원형 탄막은 페이즈가 오를수록 탄 개수를 추가.
         int phase = GetCurrentPhase();
         if (phase >= 3)
             return circleBulletCount + phase3ExtraCircleBulletCount;
@@ -296,6 +350,7 @@ public class BossAttack : MonoBehaviour
 
     int GetCurrentAimedBulletCount()
     {
+        // 조준 탄막도 페이즈에 따라 한 번에 발사되는 탄 개수 증가.
         int phase = GetCurrentPhase();
         if (phase >= 3)
             return aimedBulletCount + phase3ExtraAimedBulletCount;
@@ -308,6 +363,7 @@ public class BossAttack : MonoBehaviour
 
     void ShowWarningLines(Vector3 origin, Vector3[] dirs)
     {
+        // 한 지점에서 여러 방향으로 예고선을 보여주는 경우, 시작점을 모두 같은 위치로 맞춘다.
         Vector3[] origins = new Vector3[dirs.Length];
         for (int i = 0; i < origins.Length; i++)
         {
@@ -323,6 +379,7 @@ public class BossAttack : MonoBehaviour
 
         for (int i = 0; i < warningLines.Length; i++)
         {
+            // 필요한 개수만 켜고 나머지는 꺼서 이전 패턴의 예고선이 남지 않게 한다.
             bool active = i < count && dirs[i] != Vector3.zero;
             warningLines[i].gameObject.SetActive(active);
             if (!active)
@@ -330,10 +387,12 @@ public class BossAttack : MonoBehaviour
 
             warningLines[i].startColor = warningLineColor;
             warningLines[i].endColor = warningLineColor;
-            warningLines[i].startWidth = warningLineWidth;
-            warningLines[i].endWidth = warningLineWidth;
+            float lineWidth = Mathf.Max(0f, warningLineWidth);
+            warningLines[i].startWidth = lineWidth;
+            warningLines[i].endWidth = lineWidth;
+            // 예고선은 실제 탄 방향과 같은 방향으로 warningLineLength만큼 뻗는다.
             warningLines[i].SetPosition(0, origins[i]);
-            warningLines[i].SetPosition(1, origins[i] + dirs[i].normalized * warningLineLength);
+            warningLines[i].SetPosition(1, origins[i] + dirs[i].normalized * Mathf.Max(0f, warningLineLength));
         }
     }
 
@@ -354,13 +413,14 @@ public class BossAttack : MonoBehaviour
 
         for (int i = warningLines != null ? warningLines.Length : 0; i < count; i++)
         {
+            // 예고선 오브젝트는 보스 자식으로 만들지만 world space 좌표를 사용.
             GameObject lineObject = new GameObject("BossWarningLine");
             lineObject.transform.SetParent(transform);
             LineRenderer line = lineObject.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
             line.positionCount = 2;
             line.material = warningMaterial;
-            line.sortingOrder = 20;
+            line.sortingOrder = warningLineSortingOrder;
             lineObject.SetActive(false);
             newLines[i] = line;
         }
@@ -373,6 +433,7 @@ public class BossAttack : MonoBehaviour
         if (warningLines == null)
             return;
 
+        // 예고선 배열은 유지하고 화면 표시만 꺼서 다음 패턴에서 재사용(풀링).
         for (int i = 0; i < warningLines.Length; i++)
         {
             if (warningLines[i] != null)

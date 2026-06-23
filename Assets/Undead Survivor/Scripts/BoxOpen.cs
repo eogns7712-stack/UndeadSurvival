@@ -1,7 +1,7 @@
 using System.Collections; // 코루틴(IEnumerator)을 사용하기 위한 네임 스페이스 추가.
 using UnityEngine;
 
-/// 랜덤박스 충돌을 감지하고 보상을 생성한 뒤 박스를 풀로 반환한다.
+// 랜덤박스 충돌을 감지하고 보상을 생성한 뒤 박스를 풀로 반환한다.
 
 public class BoxOpen : MonoBehaviour
 {

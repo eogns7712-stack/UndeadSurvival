@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// 배경음과 효과음 재생을 관리하는 스크립트
+// 배경음과 효과음 재생을 관리하는 스크립트
 
 public class AudioManager : MonoBehaviour
 {
