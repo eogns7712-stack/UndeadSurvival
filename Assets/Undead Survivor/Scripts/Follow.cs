@@ -1,6 +1,6 @@
 using UnityEngine;
 
-/// 플레이어 위치를 따라가며 카메라나 보조 오브젝트 UI의 기준점을 유지하는 스크립트.
+// 플레이어 위치를 따라가며 카메라나 보조 오브젝트 UI의 기준점을 유지하는 스크립트.
 
 public class Follow : MonoBehaviour
 {

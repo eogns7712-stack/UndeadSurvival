@@ -6,19 +6,19 @@ using UnityEngine.UI;
 public class Item : MonoBehaviour
 {
     // 아이템 관리에 필요한 변수 선언
-    public ItemData data;   
-    public int level;
-    public Weapon weapon;
-    public Bomb bomb;
-    public Gear gear;
-    public float masterDamageMultiplier = 0.12f;
-    public int masterExtraCount = 1;
-    public float passiveMasterRatePerLevel = 0.04f;
+    public ItemData data;   // 이 선택지가 참조하는 ItemData 스크립터블 오브젝트.
+    public int level;   // 현재 아이템 강화 레벨. 일반 레벨과 초월 누적 레벨을 함께 관리.
+    public Weapon weapon;   // 근접/원거리 무기 선택지일 때 생성된 Weapon 참조.
+    public Bomb bomb;   // 수류탄 선택지일 때 생성된 Bomb 참조.
+    public Gear gear;   // 장갑/신발 선택지일 때 생성된 Gear 참조.
+    public float masterDamageMultiplier = 0.12f;   // 무기 초월 시 적용할 기본 데미지 증가율.
+    public int masterExtraCount = 1; // 무기 초월 시 추가될 기본 개수/관통 보너스.
+    public float passiveMasterRatePerLevel = 0.04f; // 패시브 장비 초월 시 레벨당 추가 증가율.
 
-    Image icon;
-    Text textLevel;
-    Text textName;
-    Text textDesc;
+    Image icon; // 레벨업 선택지에 표시할 아이템 아이콘.
+    Text textLevel;    // 선택지 왼쪽 레벨 표시 텍스트.
+    Text textName; // 선택지 상단 이름/초월명 표시 텍스트.
+    Text textDesc; // 선택지 설명 텍스트.
 
     void Awake()
     {   //변수 초기화
@@ -49,7 +49,7 @@ public class Item : MonoBehaviour
     // 현재 초월 단계에 맞는 이름, 아이콘과 전용 설명을 표시한다.
     void ShowTranscendenceDescription()
     {
-            int L = data.damages.Length;
+            int L = data.damages.Length;   // 한 초월 단계 안에서 사용하는 기본 레벨 길이.
             int targetTotalLevel = level + 1; // 업그레이드 수락 시 달성하게 될 최종 레벨
             
             // 레벨 주기를 순환하는 초월 단계 산출 공식 적용 (1 -> 5 순환 구조 구현)
@@ -194,13 +194,13 @@ public class Item : MonoBehaviour
 
     void SelectWeapon()
     {
-        if (data.itemId == 4)
+        if (data.itemId == 4)   // 예전 데이터에서 수류탄이 원거리 무기처럼 들어온 경우 Bomb 로직으로 우회.
         {
             SelectBomb();
             return;
         }
 
-        if (level == 0)
+        if (level == 0) // 처음 획득한 무기라면 새 Weapon 오브젝트 생성.
         {
             GameObject newWeapon = new GameObject();
             weapon = newWeapon.AddComponent<Weapon>();
@@ -224,12 +224,13 @@ public class Item : MonoBehaviour
 
             weapon.LevelUp(nextDamage,nextCount);
         }
-        level ++;
+        level ++;   // 선택 처리가 끝난 뒤 아이템 레벨 증가.
     }
 
+    // 장갑/신발 같은 패시브 장비 선택지를 처리하는 함수.
     void SelectGear()
     {
-        if (level == 0)
+        if (level == 0) // 처음 획득한 장비라면 새 Gear 오브젝트 생성.
         {
             GameObject newGear = new GameObject();    // 새로운 패시브 장비 기어 생성
             gear = newGear.AddComponent<Gear>();    
@@ -249,12 +250,13 @@ public class Item : MonoBehaviour
             float nextRate = data.damages[level];
             gear.LevelUp(nextRate);
         }
-        level ++;
+        level ++;   // 선택 처리가 끝난 뒤 아이템 레벨 증가.
     }
 
+    // 수류탄 선택지를 처리하는 함수. 일반 무기와 분리된 Bomb 스크립트를 사용.
     void SelectBomb()
     {
-        if (level == 0)
+        if (level == 0) // 처음 획득한 수류탄이라면 새 Bomb 무기 오브젝트 생성.
         {
             GameObject newBomb = new GameObject();
             bomb = newBomb.AddComponent<Bomb>();
@@ -280,6 +282,6 @@ public class Item : MonoBehaviour
 
             bomb.LevelUp(nextDamage,nextCount);
         }
-        level ++;
+        level ++;   // 선택 처리가 끝난 뒤 수류탄 레벨 증가.
     }
 }

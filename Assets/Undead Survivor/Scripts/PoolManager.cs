@@ -18,7 +18,7 @@ public class PoolManager : MonoBehaviour
 
         for (int index = 0; index < pools.Length; index++)  // 반복문으로 모든 오브젝트 풀리스트 초기화
         {
-            pools[index] = new List<GameObject>();
+            pools[index] = new List<GameObject>();   // 프리팹 종류 하나당 별도의 풀 리스트 생성.
         }
     }
 
@@ -44,6 +44,6 @@ public class PoolManager : MonoBehaviour
             pools[index].Add(select);    //생성한 오브젝트는 해당 오브젝트 풀리스트에 Add함수로 추가, 다음부터 재사용 할 수 있게 하기위함
         }
 
-        return select;
+        return select;  // 찾거나 새로 만든 오브젝트를 호출한 스크립트에 반환.
     }   
 }

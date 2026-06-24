@@ -23,8 +23,8 @@ public class AudioManager : MonoBehaviour
 
     void Awake()
     {
-        instance = this;
-        Init();
+        instance = this;    // 다른 스크립트에서 AudioManager.instance로 접근할 수 있게 자기 자신 저장.
+        Init(); // BGM과 SFX용 AudioSource들을 생성하고 초기화.
     }
 
     void Init()
@@ -37,7 +37,7 @@ public class AudioManager : MonoBehaviour
         bgmPlayer.loop = true;  // bgm 무한재생을 위한 loop값 true
         bgmPlayer.volume = bgmVolume;   // 소리 크기는 미리 지정했던 bgmVolume값
         bgmPlayer.clip = bgmClip;   // 재생할 BgmClip 지정
-        bgmEffect = Camera.main.GetComponent<AudioHighPassFilter>();
+        bgmEffect = Camera.main.GetComponent<AudioHighPassFilter>();   // 레벨업/일시정지 중 배경음 효과를 줄 필터 가져오기.
         
         // 효과음 플레이어 초기화
         GameObject sfxObject = new GameObject("SfxPlayer");
@@ -55,11 +55,11 @@ public class AudioManager : MonoBehaviour
 
     public void PlayBgm(bool isPlay)    // 배경음(bgm)을 재생하는 함수 작성
     {
-        if (isPlay)
+        if (isPlay)    // true면 BGM 재생.
         {
             bgmPlayer.Play();
         }
-        else
+        else    // false면 BGM 정지.
         {
             bgmPlayer.Stop();
         }
@@ -67,7 +67,7 @@ public class AudioManager : MonoBehaviour
 
     public void EffectBgm(bool isPlay)    // 오디오 하이패스를 사용하기 위한 함수 작성
     {
-            bgmEffect.enabled = isPlay;
+            bgmEffect.enabled = isPlay; // true면 필터 적용, false면 원래 배경음으로 복구.
     }
     public void PlaySfx(Sfx sfx)    // 효과음 재생함수 작성
     {
@@ -84,8 +84,8 @@ public class AudioManager : MonoBehaviour
                 ranIndex = Random.Range(0,2);
             }
 
-            channelIndex = loopIndex;
-            sfxPlayers[loopIndex].clip = sfxClips[(int)sfx];
+            channelIndex = loopIndex;  // 다음 효과음 검색을 현재 채널 이후부터 시작하도록 저장.
+            sfxPlayers[loopIndex].clip = sfxClips[(int)sfx];   // enum 값을 배열 인덱스로 사용해 효과음 클립 선택.
             sfxPlayers[loopIndex].Play();  // 오디오소스의 클립을 변경하고 Play 함수 호출
             break;  // 효과음 재생이 된 후 반복문 종료, 여러개의 플레이어가 같은 클립을 재생하는것을 방지
         }

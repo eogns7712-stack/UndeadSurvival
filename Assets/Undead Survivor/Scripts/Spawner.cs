@@ -6,13 +6,13 @@ public class Spawner : MonoBehaviour
 {
     public Transform[] spawnPoint;    // 자식 오브젝트의 트랜스폼을 담을 배열변수 선언
     public SpawnData[] spawnData;    // 만든 클래스를 그대로 타입으로 활용해 배열변수 선언
-    public SpawnData bossData;
-    public int bossPoolId;
-    public float bossSpawnDistance = 8f;
+    public SpawnData bossData; // 보스 전용 생성 데이터.
+    public int bossPoolId; // PoolManager에서 보스 프리팹이 들어있는 인덱스.
+    public float bossSpawnDistance = 8f;    // 보스가 플레이어 오른쪽 바깥에 등장할 거리.
     public float levelTime; // 소환 레벨 구간을 결정하는 변수 선언
     int level;  // 레벨 담당 변수 선언
     float timer;    // 소환 타이머를 위한 변수 선언
-    bool hasBossSpawned = false;
+    bool hasBossSpawned = false;    // 한 판에서 보스가 중복 생성되지 않도록 막는 값.
 
     void Awake()
     {
@@ -22,9 +22,9 @@ public class Spawner : MonoBehaviour
 
     void Update()
     {
-        if (!CanSpawnNormalEnemies())
+        if (!CanSpawnNormalEnemies())   // 게임 종료, 보스전, 생존시간 종료 상태에서는 일반 몬스터 생성 중단.
         {
-            timer = 0f;
+            timer = 0f; // 생성 조건이 아닐 때 타이머를 초기화해 재개 시 즉시 생성되는 것 방지.
             return;
         }
             
@@ -37,13 +37,14 @@ public class Spawner : MonoBehaviour
          if (timer > spawnData[level].spawnTime * GameManager.instance.ShopEnemySpawnRate) // 현재 레벨에 맞는 spawnData의 spawnTime값 사용
         {
             timer = 0;  // 소환 후 timer=0 으로 초기화
-            SpawnNormalEnemy();
+            SpawnNormalEnemy(); // 현재 시간 구간에 맞는 일반 몬스터 생성.
         }
     }
 
+    // 일반 몬스터를 생성해도 되는 상태인지 확인하는 함수.
     bool CanSpawnNormalEnemies()
     {
-        if (!GameManager.instance.isLive || GameManager.instance.isBossBattle)
+        if (!GameManager.instance.isLive || GameManager.instance.isBossBattle)  // 게임이 멈췄거나 보스전이면 잡몹 생성 중단.
             return false;
 
         // 현재 플레이 경과 시간이 설정된 Max Game Time을 넘어섰을 때
@@ -66,44 +67,45 @@ public class Spawner : MonoBehaviour
     }
     // Spawner.cs 혹은 GameManager.cs 소환 제어부의 예시 흐름
 
+    // 보스전 시작 시 보스 몬스터를 한 번만 생성하고 초기화하는 함수.
     public Enemy SpawnBossMonster()
     {
-        if (hasBossSpawned)
+        if (hasBossSpawned) // 이미 보스가 생성된 상태라면 중복 생성 방지.
             return null;
 
-        hasBossSpawned = true;
+        hasBossSpawned = true;  // 이후 호출에서는 보스가 다시 생성되지 않도록 표시.
 
         // 1. 오브젝트 풀러에서 보스 외형 애니메이터가 들어갈 수 있는 Enemy 인스턴스를 하나 사용.
-        GameObject boss = GameManager.instance.pool.Get(bossPoolId); // 0번 풀 재사용
+        GameObject boss = GameManager.instance.pool.Get(bossPoolId); // 보스 전용 풀 ID에서 보스 오브젝트 가져오기.
         if (boss == null) return null;
 
         // 2. 캐릭터의 가시 바깥 근처(약 12유닛 지점)로 소환 위치 연산
-        Vector3 playerPos = GameManager.instance.player.transform.position;
-        boss.transform.position = playerPos + new Vector3(bossSpawnDistance, 0f, 0f);
+        Vector3 playerPos = GameManager.instance.player.transform.position; // 보스 소환 기준이 되는 플레이어 위치.
+        boss.transform.position = playerPos + new Vector3(bossSpawnDistance, 0f, 0f);   // 플레이어 오른쪽 일정 거리 밖에 보스 배치.
 
-        Enemy enemyComponent = boss.GetComponent<Enemy>();
+        Enemy enemyComponent = boss.GetComponent<Enemy>(); // 보스 능력치 초기화를 위해 Enemy 컴포넌트 가져오기.
         if (enemyComponent != null)
         {   // 3. 보스 전용 스펙 데이터 초기화 전달
             if (bossData == null)
             {
-                bossData = new SpawnData();
+                bossData = new SpawnData();    // 인스펙터에 BossData가 비어 있으면 기본 데이터 생성.
                 bossData.spriteType = 0;
                 bossData.healthPoint = 10000f;
                 bossData.speed = 1.0f;
             }
 
-            bossData.isBoss = true;
-            if (bossData.scale <= 0f)
+            bossData.isBoss = true; // 보스 전용 피격/사망/리스폰 예외 처리를 위해 true 고정.
+            if (bossData.scale <= 0f)  // 보스 크기가 0 이하로 잘못 설정되면 기본 3배 크기로 보정.
             {
                 bossData.scale = 3.0f;
             }
 
-            enemyComponent.Init(bossData);
+            enemyComponent.Init(bossData); // Enemy 스크립트에 보스 데이터 전달.
 
             boss.transform.localScale = Vector3.one * bossData.scale;   // 4. 보스 몬스터의 몸체 크기(Scale)를 3배 키우기.
         }
 
-        return enemyComponent;
+        return enemyComponent;  // GameManager가 BossHP UI와 줌인 연출에 사용할 Enemy 반환.
     }
 }
 
@@ -117,7 +119,6 @@ public class SpawnData  // 새로운 클래스 선언
     public int spriteType;  // 속성 추가 : 스프라이트 타입
     public float healthPoint;   // 체력
     public float speed; // 속도
-    public bool isBoss;
-    public float scale = 1f;
+    public bool isBoss; // 보스 여부.
+    public float scale = 1f;    // 몬스터 크기 배율.
 }
-

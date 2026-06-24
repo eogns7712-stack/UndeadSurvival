@@ -7,20 +7,20 @@ public class ItemPickup : MonoBehaviour
 {
     // EXPGem, 랜덤박스, 동전(경험치 다량), 힐팩(10% 체력 회복), 자석
     public enum PickupType { Exp, RandomBox, Coin, HealPack, Magnet }
-    public PickupType type;
+    public PickupType type; // 현재 픽업 오브젝트가 어떤 보상인지 저장.
 
-    public float expValue = 1f;
-    public float magnetSpeed = 8f;
+    public float expValue = 1f; // 경험치 보석이 지급할 경험치 양.
+    public float magnetSpeed = 8f;  // 플레이어에게 빨려 들어가는 이동속도.
     public float magnetDistance = 3.5f; // 자석 흡입 적용 거리
-    public float autoCollectDistance = 0.2f;
-    public int coinExpValue = 10;
-    public float healRate = 0.1f;
-    public int boxItemPrefabId = 5;
-    public float boxItemBounceMinDistance = 1.2f;
-    public float boxItemBounceMaxDistance = 1.8f;
-    public float boxItemBounceDuration = 0.6f;
-    public float postBounceCollectDelay = 0.3f;
-    public float bounceHeight = 1.5f;
+    public float autoCollectDistance = 0.2f;    // 충돌 판정이 빗나가도 자동 획득되는 최소 거리.
+    public int coinExpValue = 10;   // 금색 코인이 지급할 경험치 양.
+    public float healRate = 0.1f;   // 힐팩이 회복할 최대 체력 비율.
+    public int boxItemPrefabId = 5; // 랜덤박스 보상으로 재사용할 풀 인덱스.
+    public float boxItemBounceMinDistance = 1.2f; // 랜덤박스 보상 튕김 최소 거리.
+    public float boxItemBounceMaxDistance = 1.8f; // 랜덤박스 보상 튕김 최대 거리.
+    public float boxItemBounceDuration = 0.6f;    // 랜덤박스 보상 튕김 시간.
+    public float postBounceCollectDelay = 0.3f;   // 튕김이 끝난 뒤 바로 먹히지 않게 하는 추가 대기 시간.
+    public float bounceHeight = 1.5f; // 튕김 포물선의 최고 높이.
 
     // 상자에서 나올 수 있는 아이템들의 스프라이트
     [Header("# Box Item Visuals")]
@@ -28,8 +28,8 @@ public class ItemPickup : MonoBehaviour
     public Sprite healPackSprite;
     public Sprite magnetSprite;
 
-    Transform playerTransform;
-    bool isBeingAttracted = false;
+    Transform playerTransform; // 아이템이 따라갈 플레이어 Transform.
+    bool isBeingAttracted = false;  // 자석 범위에 들어와 플레이어에게 끌리는 중인지 확인.
 
     // [버그 방지] 오브젝트 풀 재사용 시 원본 이미지를 유지하기 위한 캐싱 변수
     Sprite originalSprite;
@@ -59,15 +59,16 @@ public class ItemPickup : MonoBehaviour
 
     public bool CanCollect()
     {
-        return collectCooldown <= 0f;
+        return collectCooldown <= 0f;   // 튕김 연출 보호 시간이 끝났을 때만 수집 가능.
     }
 
+    // 풀에서 꺼낸 픽업 오브젝트의 타입, 값, 스프라이트를 초기화하는 함수.
     public void InitPickup(PickupType pickupType, float value)
     {
-        this.type = pickupType;
+        this.type = pickupType; // 이번에 사용할 보상 타입 저장.
         if (pickupType == PickupType.Exp)
         {
-            this.expValue = value;
+            this.expValue = value;  // 경험치 보석의 지급량 저장.
             
             // [버그 수정] 일반 몹 드롭 보석으로 활성화될 때 원본 보석 이미지로 리셋
             if (spr != null && originalSprite != null)
@@ -87,7 +88,7 @@ public class ItemPickup : MonoBehaviour
 
     void Update()
     {
-        if (playerTransform == null || !GameManager.instance.isLive)
+        if (playerTransform == null || !GameManager.instance.isLive)   // 플레이어가 없거나 게임이 멈췄으면 이동 처리 중단.
             return;
 
         // [추가] 획득 및 끌림 쿨다운이 돌고 있다면 대기 (포물선 튕김 연출 보호용)
@@ -101,8 +102,8 @@ public class ItemPickup : MonoBehaviour
         if (type == PickupType.RandomBox)
             return;
 
-        float distance = Vector3.Distance(transform.position, playerTransform.position);
-        float pickupDistance = magnetDistance + GameManager.instance.ShopPickupRangeBonus;
+        float distance = Vector3.Distance(transform.position, playerTransform.position);    // 플레이어와 현재 픽업 사이 거리.
+        float pickupDistance = magnetDistance + GameManager.instance.ShopPickupRangeBonus;  // 기본 흡수 거리 + 상점 보너스.
 
         // 플레이어에 가까이 다가가면 끌림 플래그 가동
         if (!isBeingAttracted && distance <= pickupDistance)
@@ -116,7 +117,7 @@ public class ItemPickup : MonoBehaviour
             transform.position = Vector3.MoveTowards(transform.position, playerTransform.position, magnetSpeed * Time.deltaTime);
 
             // [안전장치 추가] 자성 상태에서 플레이어와의 거리가 극도로 가까워지면 충돌 판정 유실 없이 자동 즉시 획득
-            if (distance < autoCollectDistance)
+            if (distance < autoCollectDistance)    // 충분히 가까워졌으면 충돌 여부와 상관없이 보상 획득 처리.
             {
                 CollectReward();
             }
@@ -168,7 +169,7 @@ public class ItemPickup : MonoBehaviour
                 break;
         }
 
-        AudioManager.instance.PlaySfx(AudioManager.Sfx.Select);
+        AudioManager.instance.PlaySfx(AudioManager.Sfx.Select); // 보상 획득 효과음 재생.
         gameObject.SetActive(false); // 수집 완료 후 풀 복귀
     }
 
@@ -215,7 +216,7 @@ public class ItemPickup : MonoBehaviour
     public void StartBounce(Vector3 start, Vector3 end, float duration)
     {
         collectCooldown = duration + postBounceCollectDelay; // 튕기는 시간(0.6초) + 땅에 안착 후 여유 대기시간(0.3초) 동안 무적 보호막
-        StartCoroutine(BounceRoutine(start, end, duration));
+        StartCoroutine(BounceRoutine(start, end, duration)); // 포물선 이동 코루틴 시작.
     }
 
     // 드롭 아이템을 포물선으로 튕겨낸 뒤 일정 시간 후 획득 가능하게 만듦.
@@ -243,10 +244,10 @@ public class ItemPickup : MonoBehaviour
     // 전 맵의 경험치를 끌어오는 자석 아이템을 구현하는 함수
     void ActivateFullMagnet()
     {
-        ItemPickup[] allPickups = FindObjectsOfType<ItemPickup>();
+        ItemPickup[] allPickups = FindObjectsOfType<ItemPickup>(); // 씬에 활성화된 모든 ItemPickup 검색.
         foreach (ItemPickup item in allPickups)
         {
-            if (item.gameObject.activeSelf && (item.type == PickupType.Exp || item.type == PickupType.Coin))
+            if (item.gameObject.activeSelf && (item.type == PickupType.Exp || item.type == PickupType.Coin)) // 경험치 보석과 금색 코인만 자석 대상.
             {
                 item.isBeingAttracted = true; // 자성 작동
             }

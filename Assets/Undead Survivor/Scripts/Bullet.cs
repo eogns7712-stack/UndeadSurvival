@@ -37,31 +37,31 @@ public class Bullet : MonoBehaviour
     // 탄환 및 수류탄이 일정 사거리를 날아가면 풀러로 되돌아가는 최적화 스케줄러.
     void Update()
     {
-        if (!GameManager.instance.isLive)
+        if (!GameManager.instance.isLive)   // player의 상탯값이 isLive가 아니면 제외.
             return;
 
-        if (per == -100)    // 근접 무기(삽, per == -100)의 경우는 최대 사거리 회수 검사에서 안전하게 제외.
+        if (per == -100)    // 근접 무기(삽, per == -100)의 경우는 최대 사거리 회수 검사에서 제외.
             return;
 
-        float travelDistance = Vector3.Distance(startPosition, transform.position); // 발사된 시작 지점으로부터 현재 이동한 물리적 거리를 연산.
+        float travelDistance = Vector3.Distance(startPosition, transform.position); // 발사된 시작 지점으로부터 현재 이동한 거리를 연산.
         
-        if (travelDistance >= maxRange)
-        {    // 일반 탄환은 물리 속도를 0으로 밀고 화면상에서 안전하게 풀러로 비활성화 반입.
-            rigid.velocity = Vector2.zero;
-            gameObject.SetActive(false);
+        if (travelDistance >= maxRange)     // 탄환의 이동거리가 최대사거리 이상으로 넘어가면.
+        {
+            rigid.velocity = Vector2.zero;  // 속도 정지.
+            gameObject.SetActive(false);    // 풀러로 비활성화 반환.
         }
     }
 
     void OnTriggerEnter2D(Collider2D collision)
     {
-        if (!collision.CompareTag("Enemy") || per == -100) return;
+        if (!collision.CompareTag("Enemy") || per == -100) return;  // 태그가 Enemy가 아니거나, 관통력이 -100이면 무시.
 
-        per--;
+        per--;  // Enemy가 맞으면 관통력 감소.
 
-        if (per < 0)
+        if (per < 0)    // 관통력(per)이 0이되면(모두 사용시).
         {
-            rigid.velocity = Vector2.zero;
-            gameObject.SetActive(false);
+            rigid.velocity = Vector2.zero;  // 속도 정지.
+            gameObject.SetActive(false);    // 풀 반환.
         }
     }
 }

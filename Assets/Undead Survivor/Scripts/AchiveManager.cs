@@ -11,7 +11,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
     public GameObject uiNotice; // 업적 달성 알림 오브젝트를 저장할 변수 선언
 
     enum Achive { UnlockPotato, UnlockBean }    // 업적 데이터와 같은 열거형 enum으로 생성, 업적을 생성하는 구문
-    Achive[] achives;
+    Achive[] achives;  // enum에 등록된 업적 목록을 배열로 보관.
     WaitForSecondsRealtime wait;    // WaitForSecondsRealtime : 게임 시간이 멈춰도 실제 시간 기준으로 기다리는 코루틴 함수
 
     void Awake()
@@ -40,7 +40,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
 
     void Start()
     {
-        UnlockCharacter();
+        UnlockCharacter();  // 저장된 업적 상태에 맞춰 캐릭터 버튼 잠금/해금 표시 갱신.
     }
 
     void UnlockCharacter()  // 캐릭터 버튼 해금을 위한 함수 작성
@@ -68,18 +68,18 @@ public class AchiveManager : MonoBehaviour  // 업적관리
 
         switch (achive)
         {
-            case Achive.UnlockPotato:
+            case Achive.UnlockPotato:  // 몬스터 처치 수 조건.
                 isAchive = GameManager.instance.kill >= 1000;
                 break;
 
-            case Achive.UnlockBean:
+            case Achive.UnlockBean:    // 보스 클리어 조건.
                 isAchive = GameManager.instance.isBossCleared;
                 break;
         }
 
         if (isAchive && PlayerPrefs.GetInt(achive.ToString()) == 0)  // 해당 업적이 처음 달성했다는 조건을 if문에 작성
         {
-            PlayerPrefs.SetInt(achive.ToString(), 1);
+            PlayerPrefs.SetInt(achive.ToString(), 1);  // 해당 업적을 달성 상태로 저장.
 
             for (int index = 0; index < uiNotice.transform.childCount; index++) // 알림창의 자식 오브젝트를 순회하면서 순번이 맞으면 활성화 
             {
@@ -87,7 +87,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
                 uiNotice.transform.GetChild(index).gameObject.SetActive(isActive);
             }
 
-            StartCoroutine(NoticeRoutine());
+            StartCoroutine(NoticeRoutine());    // 업적 달성 알림 UI 표시.
         }
     }
 

@@ -9,7 +9,7 @@ public class LevelUp : MonoBehaviour
     RectTransform rect; // UI인 LevelUp 창을 관리하기위한 RectTranform 변수 생성
     Item[] items;   // 아이템의 배열 변수 선언
     bool isSelecting;   // 레벨업 창이 현재 열려있는지 확인하는 변수 선언
-    int[] currentChoices = new int[3];
+    int[] currentChoices = new int[3];  // 현재 화면에 표시된 1,2,3번 선택지의 실제 Item 배열 인덱스.
 
     // [추가] 단축키 패널 안내용 숫자 배지 게임오브젝트 배열
     public GameObject[] numpadBadges; 
@@ -21,11 +21,11 @@ public class LevelUp : MonoBehaviour
     }
     void Update()
     {
-        if (!isSelecting)
+        if (!isSelecting)  // 레벨업 창이 열려있지 않으면 키 입력 처리 중단.
             return;
 
         Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
+        if (keyboard == null)   // 키보드 입력 장치가 없으면 실행 중단.
             return;
 
         // [추가] 레벨업 시 마우스가 아닌 키보드 숫자 키패드 / 메인 숫자키를 눌러 즉각 선택 지원
@@ -79,16 +79,16 @@ public class LevelUp : MonoBehaviour
 
     public void Select(int index)   // 버튼 클릭으로 호출될 아이템 선택 함수 작성
     {
-        int realIndex = currentChoices[index];
-        if (realIndex < 0 || realIndex >= items.Length)
+        int realIndex = currentChoices[index];  // UI 슬롯 번호를 실제 Item 배열 인덱스로 변환.
+        if (realIndex < 0 || realIndex >= items.Length)    // 빈 슬롯이거나 배열 범위를 벗어나면 선택 취소.
             return;
 
-        if (!items[realIndex].gameObject.activeSelf && isSelecting)
+        if (!items[realIndex].gameObject.activeSelf && isSelecting) // 화면에 표시되지 않은 아이템은 선택되지 않도록 방어.
             return;
 
-        items[realIndex].OnClick();
+        items[realIndex].OnClick(); // 선택한 아이템의 강화/회복 로직 실행.
 
-        if (isSelecting)
+        if (isSelecting)    // 아이템 선택 후에도 레벨업 창 상태라면 닫기.
             Hide();
     }
 
@@ -96,14 +96,14 @@ public class LevelUp : MonoBehaviour
     void Next() // 레벨업 선택창에서 아이템 3개를 랜덤으로 보여주는 함수
     {
         // 1. 모든 아이템 비활성화
-        foreach (Item item in items)
+        foreach (Item item in items)    // 이전에 켜져 있던 모든 선택지 비활성화.
         {
             item.gameObject.SetActive(false);
         }
 
         // 2. 가용 후보 인덱스 리스트 추출 (Heal 카드는 중복 보정용이므로 후보군에서 배제)
         List<int> validIndices = new List<int>();
-        for (int i = 0; i < items.Length - 1; i++)
+        for (int i = 0; i < items.Length - 1; i++) // 마지막 Heal 카드는 대체 카드로 쓰기 위해 기본 후보에서 제외.
         {
             validIndices.Add(i);
         }
@@ -114,23 +114,23 @@ public class LevelUp : MonoBehaviour
 
         while (selectedList.Count < targetCount && validIndices.Count > 0)
         {
-            int randPos = Random.Range(0, validIndices.Count);
-            int selectedItemIdx = validIndices[randPos];
-            validIndices.RemoveAt(randPos);
-            selectedList.Add(selectedItemIdx);
+            int randPos = Random.Range(0, validIndices.Count); // 남아있는 후보 중 랜덤 위치 선택.
+            int selectedItemIdx = validIndices[randPos];   // 실제 Item 배열 인덱스.
+            validIndices.RemoveAt(randPos);    // 같은 카드가 다시 뽑히지 않도록 후보에서 제거.
+            selectedList.Add(selectedItemIdx); // 최종 선택지 목록에 추가.
         }
 
         // 4. 만렙 도달 아이템의 대체 여부를 설정
         bool hasHealBeenAdded = false;
         for (int i = 0; i < selectedList.Count; i++)
         {
-            Item ranItem = items[selectedList[i]];
+            Item ranItem = items[selectedList[i]]; // 현재 검사할 선택지 아이템.
 
             if (ranItem.level >= ranItem.data.damages.Length)
             {
                 // 패시브 기어(장갑, 신발)도 무기처럼 한계 한도 없이 무한히 초월할 수 있도록 개방
                 // 단, 무작위로 40%의 확률로 물약(Heal) 대체를 거쳐서 등장합니다.
-                bool shouldReplaceWithHeal = (Random.value < 0.4f);
+                bool shouldReplaceWithHeal = (Random.value < 0.4f);    // 만렙 이후 성장 카드가 항상 나오지 않도록 일부 확률로 회복 카드 대체.
 
                 if (shouldReplaceWithHeal)
                 {
@@ -157,7 +157,7 @@ public class LevelUp : MonoBehaviour
         }
 
         // [버그 수정] currentChoices 원본 정렬 추가, 이 정렬을 통해 1, 2, 3 선택 슬롯과 키보드 입력 매칭이 일치.
-        System.Array.Sort(currentChoices, 0, selectedList.Count);
+        System.Array.Sort(currentChoices, 0, selectedList.Count);   // 표시 순서를 고정해 키보드 1,2,3 입력과 화면 슬롯이 어긋나지 않게 함.
 
         // 6. UI 카드 게임오브젝트 동적 활성화
         for (int index = 0; index < selectedList.Count; index++)

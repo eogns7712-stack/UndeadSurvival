@@ -10,17 +10,17 @@ public class Weapon : MonoBehaviour
     public float damage;
     public int count;
     public float speed;
-    public float minFireCooldown = 0.02f;
+    public float minFireCooldown = 0.02f;   // 상점/장갑 보너스가 겹쳐도 발사 간격이 이 값보다 낮아지지 않도록 제한.
 
-    const float MeleeRotationSpeed = 150f;
-    const float PistolCooldown = 0.5f;
-    const float RifleCooldown = 0.22f;
-    const float ShotgunCooldown = 1.35f;
-    const float MaxGearRate = 0.95f;
-    static readonly float[] ShotgunAngles = { -15f, 0f, 15f };
+    const float MeleeRotationSpeed = 150f;  // 기본 근접무기 회전 속도.
+    const float PistolCooldown = 0.5f;  // 기본 총 발사 간격.
+    const float RifleCooldown = 0.22f;  // 1단계 초월 라이플 발사 간격.
+    const float ShotgunCooldown = 1.35f;    // 2단계 초월 샷건 발사 간격.
+    const float MaxGearRate = 0.95f;    // 장갑 보너스로 쿨타임이 0 이하가 되지 않도록 제한할 최대 비율.
+    static readonly float[] ShotgunAngles = { -15f, 0f, 15f };  // 샷건 3발 분산 각도.
 
-    float timer;
-    float gearRate;
+    float timer;    // 원거리 무기 발사 주기 계산용 타이머.
+    float gearRate; // 장갑 장비에서 전달받은 공격속도 보너스.
     Player player;  // Player의 자식 오브젝트를 편히 불러오기 위한 player변수 선언
     public int masterUpgradeCount = 0; // [추가] 무기 초월 횟수 기록
 
@@ -194,7 +194,7 @@ public class Weapon : MonoBehaviour
 
     float GetGunBaseCooldown()
     {
-        int stage = CurrentStage;
+        int stage = CurrentStage;  // 현재 초월 단계에 따라 총기 기본 쿨타임을 선택.
         if (stage == 1) // M1 라이플
             return RifleCooldown;   // 연사 쿨타임 대폭 감소
 
@@ -214,8 +214,8 @@ public class Weapon : MonoBehaviour
 
     public void ApplyGear(float rate)
     {
-        gearRate = rate;
-        ApplyGear();
+        gearRate = rate;   // Gear.cs에서 받은 장갑 공속 증가율 저장.
+        ApplyGear();   // 저장된 장비 수치를 즉시 무기 속도에 반영.
     }
 
     public void LevelUp(float damage, int count)
@@ -339,8 +339,8 @@ public class Weapon : MonoBehaviour
                 // 각도만큼 방향 벡터 회전 연산
                 Vector3 rotDir = Quaternion.AngleAxis(ShotgunAngles[i], Vector3.forward) * dir;
 
-                Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
-                bullet.position = transform.position;
+            Transform bullet = GameManager.instance.pool.Get(prefabId).transform;  // 샷건 탄환을 오브젝트 풀에서 가져오기.
+            bullet.position = transform.position;
                 bullet.rotation = Quaternion.FromToRotation(Vector3.up, rotDir);
 
                 Bullet bulletComponent = bullet.GetComponent<Bullet>();
@@ -358,7 +358,7 @@ public class Weapon : MonoBehaviour
         }
         else
         {   // 기본 총 및 1단계 초월(라이플) 격발 로직.
-            Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
+            Transform bullet = GameManager.instance.pool.Get(prefabId).transform;  // 기본 총/라이플 탄환을 오브젝트 풀에서 가져오기.
             bullet.position = transform.position;   // 기존 근접무기 생성 로직을 그대로 활용하면서 위치는 Player위치로 지정
             bullet.rotation = Quaternion.FromToRotation(Vector3.up, dir); // Quaternion.FromToRotation(시작방향, 목표방향) : 지정된 축을 중심으로 목표를 향해 회전하는 함수
             

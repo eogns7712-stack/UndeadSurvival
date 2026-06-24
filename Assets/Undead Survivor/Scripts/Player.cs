@@ -11,17 +11,17 @@ public class Player : MonoBehaviour
     public Scanner scanner;   // Scanner타입 변수 선언
     public Hand[] hands;    // Player의 손 스크립트를 담을 배열변수 선언 및 초기화
     public RuntimeAnimatorController[] animCon;
-    Rigidbody2D rigid;
-    SpriteRenderer spriter;
-    Animator anim;
+    Rigidbody2D rigid; // 플레이어 물리 이동을 담당하는 Rigidbody2D.
+    SpriteRenderer spriter;    // 플레이어 방향 전환과 피격 색상 변경에 사용하는 SpriteRenderer.
+    Animator anim; // 플레이어 이동/사망 애니메이션 제어용 Animator.
 
     // [추가] 피격 깜빡임 애니메이션 처리를 위한 제어 변수들
-    bool isInvincible = false; 
+    bool isInvincible = false; // 피격 깜빡임 코루틴이 이미 실행 중인지 확인하는 값.
     public float invincibilityDuration = 0.5f; // 피격 후 무적 및 깜빡임 유지 시간
-    public float contactDamagePerSecond = 10f;
-    public float bossContactDamageMultiplier = 2f;
-    public float hitFlashInterval = 0.08f;
-    public Color hitFlashColor = new Color(1f, 0.4f, 0.4f, 0.6f);
+    public float contactDamagePerSecond = 10f;  // 일반 몬스터와 몸이 닿아 있을 때 초당 받는 피해량.
+    public float bossContactDamageMultiplier = 2f;    // 보스 몸박 피해 배율. 일반 몬스터 피해량에 곱해진다.
+    public float hitFlashInterval = 0.08f;  // 피격 깜빡임 한 번의 색상 전환 간격.
+    public Color hitFlashColor = new Color(1f, 0.4f, 0.4f, 0.6f);  // 피격 중 플레이어에게 적용할 색상.
 
     // [버그 방지] 다량의 경험치 동시 수집 시 누락 및 유실을 원천 방지하는 경험치 버퍼 큐
     public int pendingExp = 0;
@@ -38,7 +38,7 @@ public class Player : MonoBehaviour
 
     void OnEnable()
     {
-        speed *= Character.Speed;
+        speed *= Character.Speed;   // 선택한 캐릭터와 상점 이동속도 보정 적용.
         anim.runtimeAnimatorController = animCon[GameManager.instance.playerId];    // OnEnable 함수에 애니메이터 변경로직 추가
     }
     void Update()
@@ -52,9 +52,9 @@ public class Player : MonoBehaviour
     // [버그 방지] 대기열에 경험치( pendingExp )가 적체되어 있다면, 프레임마다 게임매니저에 가산
         if (pendingExp > 0)
         {
-            int amount = pendingExp;
-            pendingExp = 0;
-            GameManager.instance.GetExp(amount);
+            int amount = pendingExp;   // 이번 프레임에 처리할 경험치 양을 임시 저장.
+            pendingExp = 0;    // 처리 전 버퍼를 먼저 비워 중복 지급 방지.
+            GameManager.instance.GetExp(amount);   // GameManager 경험치 처리 루틴으로 전달.
         }
     }
 
@@ -102,10 +102,10 @@ public class Player : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
-        if (!GameManager.instance.isLive)
+        if (!GameManager.instance.isLive)   // 게임이 끝난 뒤에는 추가 피해를 받지 않도록 차단.
             return;
 
-        GameManager.instance.health -= damage;
+        GameManager.instance.health -= damage;  // GameManager에서 관리하는 현재 체력 감소.
 
         // 아직 깜빡임 루틴이 돌고 있지 않을 때에만 새로운 깜빡임 연출 시작
         if (!isInvincible)
