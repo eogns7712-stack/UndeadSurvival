@@ -38,6 +38,10 @@ public class ItemData : ScriptableObject
     [Tooltip("원거리 총의 경우, 초월 차수에 맞춰 발사될 총알(탄환) 스프라이트를 순서대로 넣어주세요.")]
     public Sprite[] customProjectileEvolutions;
 
+    [Header("# Transcendence Choice Icons")]
+    [Tooltip("초월 선택지가 LevelUp UI에 표시될 때 사용할 아이콘을 순서대로 넣어주세요.")]
+    public Sprite[] customChoiceIcons;
+
     // [추가] 초월 단계별 전용 설명글
     [Header("# Transcendence Descriptions")]
     [Tooltip("초월 단계별 전용 설명글을 순서대로 기입해 주세요.")]

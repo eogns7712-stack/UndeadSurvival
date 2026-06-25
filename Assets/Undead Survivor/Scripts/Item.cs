@@ -58,78 +58,26 @@ public class Item : MonoBehaviour
             int displayLevel = 1 + (dL % L);  // 각 단계 내부의 순환 레벨 1 -> 5
 
             // [초월 설명 텍스트 보완 : 설명 잘림 최적화]
+            icon.sprite = GetTranscendenceIcon(stage); // 초월 단계에 맞는 선택지 아이콘으로 교체.
             string evolutionStepName = "";
-            string customDescription = "";
-
-            // 초월 단계에 맞춰 실시간으로 대입할 초월 가산 비율을 연산.
-            float displayDamagePct = masterDamageMultiplier * 100f; // 무기 기본 초월 대미지 (12%)
-            int displayCount = masterExtraCount;         // 무기 기본 초월 추가 개수 (1개)
+            string customDescription = GetTranscendenceDescription(stage, displayLevel);
 
             if (data.itemId == 0) // 근접무기 삽
             {
                 evolutionStepName = (stage == 1) ? " [M1 갈퀴]" : " [M2 낫]";
-                displayCount = 0;
             }
             else if (data.itemId == 1) // 원거리무기 총
             {
                 evolutionStepName = (stage == 1) ? " [M1 라이플]" : " [M2 샷건]";
-                
-                // 총기류 초월 특성에 걸맞는 전용 수치를 계산하여 기입.
-                if (stage == 1)
-                {
-                    displayDamagePct = -30f; // 라이플 대미지 30% 감소
-                }
-                else
-                {
-                    displayDamagePct = 120f; // 샷건 대미지 120% 증가.
-                    displayCount = 3;        // 3발 분산 사격화
-                }
             }
             else if (data.itemId == 4) // [버그 수정] 원거리무기 수류탄 분기 연동.
             {
                 evolutionStepName = (stage == 1) ? " [M1 파편 수류탄]" : " [M2 소이 수류탄]";
-                
-                // 수류탄 초월 기획 전용 대칭 데이터 연산 기입
-                if (stage == 1)
-                {
-                    displayDamagePct = 35f;  // 파편 데미지 연산
-                    displayCount = 5;        // 파편 개수 가산
-                }
-                else
-                {
-                    displayDamagePct = 80f;   // 소이탄 지옥불 중심 데미지
-                    displayCount = 1;        // 지옥불 화염 영역 개수
-                }
             }
             else
             {
                 // 패시브 장비류(장갑, 신발) 초월
                 evolutionStepName = (data.itemType == ItemData.ItemType.Glove) ? " [공속 초월]" : " [이동 초월]";
-                displayDamagePct = passiveMasterRatePerLevel * 100f; // 장갑/신발 속도 4% 가산
-                displayCount = 0;
-            }
-
-            // ItemData의 'Transcendence Descriptions' 배열에 적혀 있는 "{0}", "{1}" 포맷 양식을 읽어와 수치를 동적 맵핑.
-            int descIndex = stage - 1;
-            if (data.transcendenceDescs != null && descIndex < data.transcendenceDescs.Length && !string.IsNullOrEmpty(data.transcendenceDescs[descIndex]))
-            {
-                // 에셋에 수치 포맷({0}, {1})을 포함해 적어둔 규칙이 있다면 실시간 동적 가동.
-                customDescription = string.Format(data.transcendenceDescs[descIndex], displayDamagePct, displayCount);
-            }
-            else
-            {
-                // 에셋에 초월 설명이 아예 비어있을 때 오작동을 차단하는 기본 가이드문(Fallback 장치)
-                if (data.itemId == 4)
-                {
-                    if (stage == 1)
-                        customDescription = $"수류탄이 공중에서 분열해 <color=yellow>{displayCount}개</color>의 소형 파편으로 쪼개집니다.\n기본 대미지가 <color=yellow>+{displayDamagePct}%</color> 가산됩니다.";
-                    else
-                        customDescription = $"폭발지에 <color=orange>지옥불 소이 지대</color>를 <color=yellow>{displayCount}개</color> 잔류시킵니다.\n중심부 데미지가 <color=orange>+{displayDamagePct}%</color> 폭증합니다.";
-                }
-                else
-                {
-                    customDescription = "돌파 강화를 가동합니다.\n성능 효율성이 추가 누적 가산됩니다.";
-                }
             }
 
             // [레이아웃 겹침 해결] 좁은 왼쪽 레벨칸에는 아주 심플하게 "M1 L.1" 형태로 표기하여 겹침을 방지.
@@ -142,6 +90,7 @@ public class Item : MonoBehaviour
 
     void ShowNormalDescription()
     {
+        icon.sprite = data.itemIcon;    // 일반 레벨업 선택지는 기본 아이템 아이콘으로 복구.
         textName.text = data.itemName; // 초월 해제 시 원래 이름 복원
         textLevel.text = "Lv." + (level + 1); // level이 1부터 시작하기 위함
 
@@ -150,18 +99,137 @@ public class Item : MonoBehaviour
             case ItemData.ItemType.Melee:   // 무기 타입의 경우
             case ItemData.ItemType.Range:
             case ItemData.ItemType.Bomb:
-                textDesc.text = string.Format(data.itemDesc, data.damages[level] * 100, data.counts[level]);    // 데미지 상승량을 보여주기 위해 *100
+                textDesc.text = GetWeaponDescription();    // 실제 선택 시 적용되는 무기/수류탄 강화값 기준으로 표시.
                 break;
 
             case ItemData.ItemType.Glove:   // 장비 타입의 경우
             case ItemData.ItemType.Shoe:
-                textDesc.text = string.Format(data.itemDesc, data.damages[level] * 100 );
+                textDesc.text = GetGearDescription();   // 장비는 누적 증가량이 아니라 해당 레벨의 최종 rate를 표시.
                 break;
             
             default:    // 일회성 아이템의 경우
                 textDesc.text = string.Format(data.itemDesc);
                 break;
         }
+    }
+
+    string GetWeaponDescription()
+    {
+        if (level == 0) // 처음 획득하는 선택지는 강화가 아니라 장착/해금 효과.
+        {
+            switch (data.itemType)
+            {
+                case ItemData.ItemType.Melee:
+                    return $"무기 획득\n공격력 {FormatNumber(data.baseDamage)}\n무기 개수 {data.baseCount}";
+                case ItemData.ItemType.Range:
+                    return $"무기 획득\n공격력 {FormatNumber(data.baseDamage)}\n관통력 {data.baseCount}";
+                case ItemData.ItemType.Bomb:
+                    return $"수류탄 획득\n폭발 공격력 {FormatNumber(data.baseDamage)}";
+            }
+        }
+
+        float damagePercent = data.damages[level] * 100f;  // 일반 레벨업은 baseDamage 기준 증가율을 사용.
+        int countBonus = data.counts[level];   // 근접은 개수, 원거리는 관통, 수류탄은 초월 후 파편 보너스로 사용.
+        switch (data.itemType)
+        {
+            case ItemData.ItemType.Melee:
+                if (countBonus > 0)
+                    return $"공격력 +{FormatNumber(damagePercent)}%\n무기 개수 +{countBonus}";
+                return $"공격력 +{FormatNumber(damagePercent)}%\n무기 개수 변화 없음";
+
+            case ItemData.ItemType.Range:
+                if (countBonus > 0)
+                    return $"공격력 +{FormatNumber(damagePercent)}%\n관통력 +{countBonus}";
+                return $"공격력 +{FormatNumber(damagePercent)}%\n관통력 변화 없음";
+
+            case ItemData.ItemType.Bomb:
+                if (countBonus > 0)
+                    return $"폭발 공격력 +{FormatNumber(damagePercent)}%";
+                return $"폭발 공격력 +{FormatNumber(damagePercent)}%\n파편 보너스 변화 없음";
+        }
+
+        return string.Format(data.itemDesc, damagePercent, countBonus);
+    }
+
+    string GetGearDescription()
+    {
+        float rate = data.damages[level] * 100f;    // Gear.LevelUp에 그대로 전달되는 최종 장비 효과율.
+        if (data.itemType == ItemData.ItemType.Glove)
+            return $"공격속도 +{FormatNumber(rate)}%\n무기와 수류탄에 적용";
+
+        return $"이동속도 +{FormatNumber(rate)}%\n플레이어 이동에 적용";
+    }
+
+    string GetTranscendenceDescription(int stage, int displayLevel)
+    {
+        float masterDamagePct = masterDamageMultiplier * 100f; // Weapon/Bomb.MasterUpgrade에 전달되는 실제 데미지 증가율.
+        if (data.itemId == 0)
+        {
+            return $"현재 공격력 +{FormatNumber(masterDamagePct)}%\n무기 외형 진화\n개수 증가는 없음";
+        }
+
+        if (data.itemId == 1)
+        {
+            if (stage == 1 && displayLevel == 1)
+                return "라이플로 진화\n현재 공격력 -30%\n발사 간격 감소";
+
+            if (stage == 1)
+                return $"라이플 강화\n현재 공격력 +{FormatNumber(masterDamagePct)}%\n관통 +{masterExtraCount}";
+
+            if (displayLevel == 1)
+                return "샷건으로 진화\n현재 공격력 +120%\n3발 분산, 발사 간격 증가";
+
+            return $"샷건 강화\n현재 공격력 +{FormatNumber(masterDamagePct)}%\n3발 분산 유지";
+        }
+
+        if (data.itemId == 4)
+        {
+            Bomb balance = GetBombBalanceSource();
+            float fragmentDamagePct = balance != null ? balance.fragmentDamageRate * 100f : 0f;
+            float fireDamagePct = balance != null ? balance.fireDamageRate * 100f : 0f;
+
+            if (stage == 1)
+                return $"파편 수류탄 진화\n폭발 공격력 +{FormatNumber(masterDamagePct)}%, 파편 +{masterExtraCount}\n파편 피해 {FormatNumber(fragmentDamagePct)}%";
+
+            return $"소이 수류탄 진화\n폭발 공격력 +{FormatNumber(masterDamagePct)}%, 파편 +{masterExtraCount}\n화염 피해 {FormatNumber(fireDamagePct)}%";
+        }
+
+        if (data.itemType == ItemData.ItemType.Glove || data.itemType == ItemData.ItemType.Shoe)
+        {
+            int nextMasterLevel = level - data.damages.Length + 1;  // 선택 후 적용될 패시브 초월 누적 레벨.
+            float nextRate = data.damages[data.damages.Length - 1] + passiveMasterRatePerLevel * nextMasterLevel;
+            string targetName = data.itemType == ItemData.ItemType.Glove ? "공격속도" : "이동속도";
+            return $"{targetName} 초월 강화\n현재 효과 총 +{FormatNumber(nextRate * 100f)}%\n레벨당 +{FormatNumber(passiveMasterRatePerLevel * 100f)}%";
+        }
+
+        return $"현재 공격력 +{FormatNumber(masterDamagePct)}%\n추가 수량 +{masterExtraCount}";
+    }
+
+    Bomb GetBombBalanceSource()
+    {
+        if (bomb != null)
+            return bomb;
+
+        if (data.projectile == null)
+            return null;
+
+        return data.projectile.GetComponent<Bomb>();
+    }
+
+    Sprite GetTranscendenceIcon(int stage)
+    {
+        int evolutionIndex = stage - 1; // stage 1은 배열 0번, stage 2는 배열 1번과 연결.
+        if (data.customChoiceIcons != null && evolutionIndex >= 0 && evolutionIndex < data.customChoiceIcons.Length && data.customChoiceIcons[evolutionIndex] != null)
+        {
+            return data.customChoiceIcons[evolutionIndex];   // LevelUp 선택지 전용 초월 아이콘 사용.
+        }
+
+        return data.itemIcon;   // 초월 전용 아이콘이 없으면 기존 아이콘 유지.
+    }
+
+    string FormatNumber(float value)
+    {
+        return value.ToString("0.#");
     }
 
     // 선택된 아이템 종류에 맞는 강화 로직을 실행한 뒤 선택창을 닫는다.

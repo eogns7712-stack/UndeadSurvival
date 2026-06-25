@@ -35,6 +35,9 @@ MonoBehaviour:
   customProjectileEvolutions:
   - {fileID: -703694536, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
   - {fileID: 762804792, guid: 0d5e657ee5a074e4baa53d5b248a01d2, type: 3}
+  customChoiceIcons:
+  - {fileID: -1786786079, guid: d71a3dc7aa20fad4f9a99fc76a9254ba, type: 3}
+  - {fileID: -344242777, guid: d71a3dc7aa20fad4f9a99fc76a9254ba, type: 3}
   transcendenceDescs:
   - "[M1 \uAC08\uD034 \uC9C4\uD654]\r\n\uACF5\uACA9\uB825\uC774 <color=blue>+{0}%</color>
     \uC99D\uAC00\uD569\uB2C8\uB2E4.\r"

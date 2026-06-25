@@ -45,6 +45,10 @@ public class Reposition : MonoBehaviour
             case "Enemy":
                 if (coll.enabled)   // Enemy가 죽어있으면 다른오브젝트와 충돌하지않도록
                 {
+                    Enemy enemy = GetComponent<Enemy>();
+                    if (enemy != null && enemy.isBoss) // 보스는 멀리 떨어져도 강제 재배치하지 않음.
+                        break;
+
                     Vector3 dist = playerPos - myPos;   // 거리차이 계산
                     Vector3 ran = new Vector3(Random.Range(-3, 3), Random.Range(-3, 3), 0); // 랜덤벡터를 더해 퍼져있는 몬스터 재배치
                     transform.Translate(ran + dist * 2);    // transform.Translate(dist) 만 작성한다면 적들이 Player의 위치에 바로 재배치 될 수 있음,

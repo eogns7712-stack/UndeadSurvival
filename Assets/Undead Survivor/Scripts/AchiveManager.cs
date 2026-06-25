@@ -9,6 +9,7 @@ public class AchiveManager : MonoBehaviour  // 업적관리
     public GameObject[] lockCharacter;  // 잠금 해금 버튼들을 담을 변수 추가
     public GameObject[] unlockCharacter;
     public GameObject uiNotice; // 업적 달성 알림 오브젝트를 저장할 변수 선언
+    public int unlockPotatoKillCount = 1000;    // 감자농부 해금에 필요한 이번 판 몬스터 처치 수
 
     enum Achive { UnlockPotato, UnlockBean }    // 업적 데이터와 같은 열거형 enum으로 생성, 업적을 생성하는 구문
     Achive[] achives;  // enum에 등록된 업적 목록을 배열로 보관.
@@ -45,12 +46,19 @@ public class AchiveManager : MonoBehaviour  // 업적관리
 
     void UnlockCharacter()  // 캐릭터 버튼 해금을 위한 함수 작성
     {
-        for (int index = 0; index < lockCharacter.Length; index++)  // 잠금 버튼 배열을 순회하면서 인덱스에 해당하는 업적 이름 가져오기
+        int count = Mathf.Min(lockCharacter.Length, unlockCharacter.Length, achives.Length);    // 인스펙터 배열 길이가 서로 달라도 오류가 나지 않도록 최소 길이만큼만 반복
+        for (int index = 0; index < count; index++)  // 잠금 버튼 배열을 순회하면서 인덱스에 해당하는 업적 이름 가져오기
         {
             string achivesName = achives[index].ToString();
             bool isUnlock = PlayerPrefs.GetInt(achivesName) == 1;   // GetInt 함수로 저장된 업적 상태를 가져와서 버튼 활성화에 적용
-            lockCharacter[index].SetActive(!isUnlock);
-            unlockCharacter[index].SetActive(isUnlock); // 비활성화된 캐릭터버튼을 활성화하고, 활성화되있던 잠금버튼을 비활성화
+            if (lockCharacter[index] != null)
+            {
+                lockCharacter[index].SetActive(!isUnlock);
+            }
+            if (unlockCharacter[index] != null)
+            {
+                unlockCharacter[index].SetActive(isUnlock); // 비활성화된 캐릭터버튼을 활성화하고, 활성화되있던 잠금버튼을 비활성화
+            }
         }
     }
 
@@ -64,12 +72,15 @@ public class AchiveManager : MonoBehaviour  // 업적관리
 
     void CheckAchive(Achive achive)  // 업적 달성을 위한 함수, 업적달성조건을 작성하는 부분
     {
+        if (GameManager.instance == null)   // GameManager가 아직 준비되지 않았다면 업적 조건 검사 중단
+            return;
+
         bool isAchive = false;
 
         switch (achive)
         {
             case Achive.UnlockPotato:  // 몬스터 처치 수 조건.
-                isAchive = GameManager.instance.kill >= 1000;
+                isAchive = GameManager.instance.kill >= unlockPotatoKillCount;
                 break;
 
             case Achive.UnlockBean:    // 보스 클리어 조건.
@@ -80,6 +91,11 @@ public class AchiveManager : MonoBehaviour  // 업적관리
         if (isAchive && PlayerPrefs.GetInt(achive.ToString()) == 0)  // 해당 업적이 처음 달성했다는 조건을 if문에 작성
         {
             PlayerPrefs.SetInt(achive.ToString(), 1);  // 해당 업적을 달성 상태로 저장.
+            PlayerPrefs.Save(); // 씬 전환이나 게임 종료 전에 업적 저장값이 날아가지 않도록 즉시 저장.
+            UnlockCharacter();  // 업적 달성 직후 현재 캐릭터 선택 UI도 바로 해금 상태로 갱신.
+
+            if (uiNotice == null)
+                return;
 
             for (int index = 0; index < uiNotice.transform.childCount; index++) // 알림창의 자식 오브젝트를 순회하면서 순번이 맞으면 활성화 
             {
