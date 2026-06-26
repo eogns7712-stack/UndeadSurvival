@@ -52,8 +52,10 @@ public class GameManager : MonoBehaviour
     public Result uiResult;    // 게임 결과 UI 오브젝트를 저장할 변수 선언, 타입을 스크립트로 변경(영상13 28:30) 
     public GameObject uiHealth;
     public GameObject shopButton;
+    public GameObject guideButton;
     public GameObject pauseButton;
     public GameObject enemyCleaner; // 게임 승리시 적을 정리하는 클리너 변수 선언
+    public GameGuideUI uiGuide;
     public Spawner spawner;
     [Header("# Boss Info")]
     public float bossZoomSize = 4.5f;
@@ -99,6 +101,7 @@ public class GameManager : MonoBehaviour
         }
         EnsureBossWarningUI();  // 보스 경고 UI가 없으면 런타임에 자동 생성.
         SetShopButtonActive(true);  // 시작 화면에서는 상점 버튼 활성화.
+        SetGuideButtonActive(true); // 시작 화면에서는 게임 설명 버튼 활성화.
         SetPauseButtonActive(false);    // 게임 시작 전에는 일시정지 버튼 비활성화.
     }
 
@@ -107,8 +110,13 @@ public class GameManager : MonoBehaviour
     {
         playerId = id;  // 선택한 캐릭터 id 저장.
         SetShopButtonActive(false); // 게임 시작 후에는 상점 버튼 숨기기.
+        SetGuideButtonActive(false);    // 게임 시작 후에는 게임 설명 버튼 숨기기.
         SetPauseButtonActive(true); // 게임 시작 후에는 일시정지 버튼 표시.
         isPaused = false;   // 새 게임 시작 시 일시정지 상태 초기화.
+        if (uiGuide != null)    // 게임 설명창이 열려 있었다면 닫기.
+        {
+            uiGuide.Hide();
+        }
         if (uiPause != null)    // 이전 게임에서 일시정지 UI가 켜져 있었다면 숨기기.
         {
             uiPause.Hide();
@@ -154,7 +162,6 @@ public class GameManager : MonoBehaviour
 
         uiResult.gameObject.SetActive(true);   // 게임결과 UI 활성화
         uiResult.Lose();    // 이미지 오브젝트를 활성화하는 패배 함수 호출
-        SetShopButtonActive(true);  // 게임 종료시 ShopButtom 활성화.
         Stop(); // 결과창 상태에서 게임 시간 정지.
 
         AudioManager.instance.PlayBgm(false);   // 게임 종료시 Bgm종료
@@ -218,7 +225,6 @@ public class GameManager : MonoBehaviour
 
         uiResult.gameObject.SetActive(true);   // 게임결과 UI 활성화
         uiResult.Win();    // 이미지 오브젝트를 활성화하는 승리 함수 호출
-        SetShopButtonActive(true);  // 게임 종료 연출 시 ShopButton 활성화.
         Stop(); // 결과창 상태에서 게임 시간 정지.
 
         
@@ -237,6 +243,15 @@ public class GameManager : MonoBehaviour
         if (shopButton != null) // ShopButton이 인스펙터에 연결되어 있을 때만 활성화 상태 변경.
         {
             shopButton.SetActive(active);
+        }
+    }
+
+    // 캐릭터 선택 화면에서만 게임 설명 버튼을 보이게 제어하는 함수.
+    void SetGuideButtonActive(bool active)
+    {
+        if (guideButton != null)    // GuideButton이 인스펙터에 연결되어 있을 때만 활성화 상태 변경.
+        {
+            guideButton.SetActive(active);
         }
     }
 

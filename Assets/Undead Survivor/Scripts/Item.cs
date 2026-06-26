@@ -115,6 +115,19 @@ public class Item : MonoBehaviour
 
     string GetWeaponDescription()
     {
+        if (data.itemId == 4)   // 예전 데이터에서 수류탄이 Range 타입으로 남아 있어도 설명은 Bomb 기준으로 표시.
+        {
+            if (level == 0)
+                return $"수류탄 획득\n폭발 공격력 {FormatNumber(data.baseDamage)}\n스캐너 목표로 투척";
+
+            float bombDamagePercent = data.damages[level] * 100f;
+            int fragmentBonus = data.counts[level];
+            if (fragmentBonus > 0)
+                return $"폭발 공격력 +{FormatNumber(bombDamagePercent)}%\n파편 보너스 +{fragmentBonus}\n초월 후 파편에 적용";
+
+            return $"폭발 공격력 +{FormatNumber(bombDamagePercent)}%\n파편 보너스 변화 없음";
+        }
+
         if (level == 0) // 처음 획득하는 선택지는 강화가 아니라 장착/해금 효과.
         {
             switch (data.itemType)
@@ -122,9 +135,9 @@ public class Item : MonoBehaviour
                 case ItemData.ItemType.Melee:
                     return $"무기 획득\n공격력 {FormatNumber(data.baseDamage)}\n무기 개수 {data.baseCount}";
                 case ItemData.ItemType.Range:
-                    return $"무기 획득\n공격력 {FormatNumber(data.baseDamage)}\n관통력 {data.baseCount}";
+                    return $"무기 획득\n공격력 {FormatNumber(data.baseDamage)}\n관통 {data.baseCount}";
                 case ItemData.ItemType.Bomb:
-                    return $"수류탄 획득\n폭발 공격력 {FormatNumber(data.baseDamage)}";
+                    return $"수류탄 획득\n폭발 공격력 {FormatNumber(data.baseDamage)}\n스캐너 목표로 투척";
             }
         }
 
@@ -139,12 +152,12 @@ public class Item : MonoBehaviour
 
             case ItemData.ItemType.Range:
                 if (countBonus > 0)
-                    return $"공격력 +{FormatNumber(damagePercent)}%\n관통력 +{countBonus}";
-                return $"공격력 +{FormatNumber(damagePercent)}%\n관통력 변화 없음";
+                    return $"공격력 +{FormatNumber(damagePercent)}%\n관통 +{countBonus}";
+                return $"공격력 +{FormatNumber(damagePercent)}%\n관통 변화 없음";
 
             case ItemData.ItemType.Bomb:
                 if (countBonus > 0)
-                    return $"폭발 공격력 +{FormatNumber(damagePercent)}%";
+                    return $"폭발 공격력 +{FormatNumber(damagePercent)}%\n파편 보너스 +{countBonus}\n초월 후 파편에 적용";
                 return $"폭발 공격력 +{FormatNumber(damagePercent)}%\n파편 보너스 변화 없음";
         }
 
@@ -283,11 +296,11 @@ public class Item : MonoBehaviour
         }
         else
         {
-            float nextDamage = data.baseDamage;
+            float nextDamage = data.baseDamage * Character.Damage;
             int nextCount = 0;
             
             // 이 아래부분에서 스크랩터블 오브젝트에서 작성한 아이템 데이터의 레벨당 증가값을 + 혹은 * 로 지정할 수 있음
-            nextDamage += data.baseDamage * data.damages[level];
+            nextDamage += data.baseDamage * data.damages[level] * Character.Damage;
             nextCount += data.counts[level];
 
             weapon.LevelUp(nextDamage,nextCount);
@@ -341,11 +354,11 @@ public class Item : MonoBehaviour
         }
         else
         {
-            float nextDamage = data.baseDamage;
+            float nextDamage = data.baseDamage * Character.Damage;
             int nextCount = 0;
             
             // 이 아래부분에서 스크랩터블 오브젝트에서 작성한 아이템 데이터의 레벨당 증가값을 + 혹은 * 로 지정할 수 있음
-            nextDamage += data.baseDamage * data.damages[level];
+            nextDamage += data.baseDamage * data.damages[level] * Character.Damage;
             nextCount += data.counts[level];
 
             bomb.LevelUp(nextDamage,nextCount);

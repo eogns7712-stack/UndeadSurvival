@@ -195,9 +195,17 @@ MonoBehaviour:
   target: {fileID: 0}
   despawnDistance: 22
   knockBackPower: 1.5
+  respawnMinRadius: 10
+  respawnMaxRadius: 14
   expGemPrefabId: 5
   randomBoxPrefabId: 6
   boxDropChance: 0
+  boxSpawnOffset: 0.2
+  boxBounceMinDistance: 0.8
+  boxBounceMaxDistance: 1.3
+  boxBounceDuration: 0.45
+  bossHitFlashColor: {r: 1, g: 0.45, b: 0.45, a: 1}
+  bossHitFlashDuration: 0.05
 --- !u!114 &5097005659072827067
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -228,13 +236,26 @@ MonoBehaviour:
   bulletMaxRange: 20
   patternInterval: 2.5
   firstAttackDelay: 2
+  telegraphDelay: 0.5
+  warningLineLength: 18
+  warningLineWidth: 0.08
+  warningLineSortingOrder: 20
+  warningLineColor: {r: 1, g: 0, b: 0, a: 0.45}
   circleBulletCount: 16
   aimedBurstCount: 4
   aimedBulletCount: 3
   aimedBurstInterval: 0.25
   aimedSpreadAngle: 12
   patternSpawnPoints: []
-  spawnPointBulletSpeed: 5
+  spawnPointBulletSpeed: 7
+  phase2HealthRate: 0.7
+  phase3HealthRate: 0.4
+  phase2PatternInterval: 2
+  phase3PatternInterval: 1.4
+  phase2ExtraCircleBulletCount: 8
+  phase3ExtraCircleBulletCount: 16
+  phase2ExtraAimedBulletCount: 1
+  phase3ExtraAimedBulletCount: 2
 --- !u!1 &7462495220834420015
 GameObject:
   m_ObjectHideFlags: 0
